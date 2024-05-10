@@ -1,6 +1,6 @@
 #include "lob.h"
-#include <print>
+#include <iostream>
 
 void lob::test() {
-  std::println("lob::test()");
+  std::cout << "lob::test()";
 }
