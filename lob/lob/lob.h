@@ -10,8 +10,6 @@
 #include <string_view>
 #include <cassert>
 #include <deque>
-#include <print>
-#include <format>
 
 namespace lob {
   	
@@ -144,7 +142,7 @@ namespace lob{
 
         }
       }
-      std::println("Done, effective price: {}", averagePrice);
+      std::cout << "Done, effective price: " << averagePrice << std::endl;
     }
 
   private:
