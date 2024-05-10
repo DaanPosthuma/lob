@@ -5,6 +5,16 @@
 #include "bufferedreader.h"
 #include "itch.h"
 #include "order_book.h"
+#include <iostream>
+#include <utility>
+
+namespace std{
+  
+  template <class Enum>
+  auto to_underlying (Enum e){
+    return static_cast<std::underlying_type_t<Enum>>(e);
+  }
+}
 
 template <itch_t __code>
 class PROCESS
@@ -36,13 +46,39 @@ static sprice_t mksigned(price_t price, BUY_SELL buy)
     break;                              \
   }
 
+class EventCounter {
+public:
+  EventCounter() : mCounters(128, 0) {}
+  void count(itch_t eventType) {
+    (void)eventType;
+    //++mCounters[static_cast<size_t>(eventType)];
+  }
+  void print() const {
+    for (char c='A'; c <= 'Z'; ++c) {
+      if (mCounters[static_cast<size_t>(c)])
+        std::cout << c << ": " << mCounters[static_cast<size_t>(c)] << std::endl;
+    }
+  }
+
+private:
+  std::vector<size_t> mCounters;
+};
+
 int main()
 {
   buf_t buf(1024);
   buf.fd = STDIN_FILENO;
   std::chrono::steady_clock::time_point start;
   size_t npkts = 0;
+  auto counters = EventCounter();
+  /*auto mints = std::numeric_limits<std::underlying_type_t<timestamp_t>>::max();
+  auto maxts = std::numeric_limits<std::underlying_type_t<timestamp_t>>::min();
+  auto minbook = std::numeric_limits<std::underlying_type_t<book_id_t>>::max();
+  auto maxbook = std::numeric_limits<std::underlying_type_t<book_id_t>>::min();*/
+#ifndef BUILD_BOOK
 #define BUILD_BOOK 1
+#endif
+
 #if !BUILD_BOOK
   size_t nadds(0);
   uint64_t maxoid(0);
@@ -54,10 +90,11 @@ int main()
                                                            // multiply by 2 for
                                                            // good measure
 #endif
-  printf("%lu\n", sizeof(order_book) * order_book::MAX_BOOKS);
+  std::cout << "memory size of order books: " << sizeof(order_book) * order_book::MAX_BOOKS << std::endl;
   while (is_ok(buf.ensure(3))) {
     if (npkts) ++npkts;
     itch_t const msgtype = itch_t(*buf.get(2));
+    counters.count(msgtype);
     switch (msgtype) {
       DO_CASE(itch_t::SYSEVENT);
       DO_CASE(itch_t::STOCK_DIRECTORY);
@@ -82,6 +119,10 @@ int main()
         auto const pkt = PROCESS<itch_t::ADD_ORDER>::read_from(&buf);
         assert(uint64_t(pkt.oid) <
                uint64_t(std::numeric_limits<int32_t>::max()));
+	//mints = std::min(std::to_underlying(pkt.timestamp), mints);
+	//maxts = std::max(std::to_underlying(pkt.timestamp), maxts);
+	//minbook = std::min(pkt.stock_locate, minbook);
+	//maxbook = std::max(pkt.stock_locate, maxbook);
 #if BUILD_BOOK
         order_book::add_order(order_id_t(pkt.oid), book_id_t(pkt.stock_locate),
                               mksigned(pkt.price, pkt.buy), pkt.qty);
@@ -161,4 +202,12 @@ int main()
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   printf("%lu packets in %lu nanos , %.2f nanos per packet \n", npkts, nanos,
          nanos / (double)npkts);
+  std::cout << "npkts: " << npkts << std::endl;
+  /*std::cout << "mints: " << mints << std::endl;
+  std::cout << "maxts: " << maxts << std::endl;
+  std::cout << "maxbook: " << maxbook << std::endl;
+  std::cout << "minbook: " << minbook << std::endl;*/
+
+  counters.print();
+
 }

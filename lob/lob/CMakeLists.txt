@@ -10,7 +10,7 @@
 
 add_library(lob)
 
-target_sources(lob PUBLIC lob.h PRIVATE lob.cpp)
+target_sources(lob PUBLIC lob.h itch_reader.h PRIVATE itch_reader.cpp bufferedreader.cpp)
 
 set_target_properties(lob PROPERTIES FOLDER lob)
 

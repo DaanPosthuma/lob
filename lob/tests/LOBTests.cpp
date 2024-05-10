@@ -1,12 +1,27 @@
 ﻿#include <gtest/gtest.h>
 #include <lob/lob.h>
+#include <lob/itch_reader.h>
 #include <unordered_map>
 
 
 namespace {
 
-  TEST(LOBTests, Test) {
-	lob::test();
+  TEST(LOBTests, ItchReaderTest) {
+    
+    size_t countAddOrder = 0;
+
+    auto books = std::vector<lob::LimitOrderBook<4>>(10000);
+
+    auto add_order = [&](uint64_t oid, uint16_t posid, uint32_t price, char bs, uint32_t qty){
+      ++countAddOrder;
+      books[posid].PlaceLimitOrder(bs == 'B' ? lob::Direction::Buy : lob::Direction::Sell, qty, price);
+    };
+
+
+    itch_reader::read(add_order);
+    
+    std::cout << "count add order: " << countAddOrder << std::endl;
+    std::cout << "num books: " << books.size() << std::endl;
   }
 
 
