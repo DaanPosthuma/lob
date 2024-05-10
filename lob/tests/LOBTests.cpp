@@ -5,6 +5,11 @@
 
 namespace {
 
+  TEST(LOBTests, Test) {
+	lob::test();
+  }
+
+
   TEST(LOBTests, Trivial) {
     
     auto book = lob::LimitOrderBook<4>();

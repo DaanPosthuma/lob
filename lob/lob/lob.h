@@ -159,4 +159,7 @@ namespace lob{
     std::map<int, Level, std::function<bool(double, double)>> mAsk;
   };
 
+  void test();
+
 }
+

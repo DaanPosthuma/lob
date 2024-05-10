@@ -8,12 +8,13 @@
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
 
-add_library(lob INTERFACE lob.h)
+add_library(lob)
+
+target_sources(lob PUBLIC lob.h PRIVATE lob.cpp)
 
 set_target_properties(lob PROPERTIES FOLDER lob)
 
-
-target_include_directories(lob INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_include_directories(lob PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 #target_compile_options(lob
 #    INTERFACE
