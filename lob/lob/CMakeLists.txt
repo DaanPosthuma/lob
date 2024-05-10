@@ -10,7 +10,7 @@
 
 add_library(lob)
 
-target_sources(lob PUBLIC lob.h PRIVATE lob.cpp)
+target_sources(lob PUBLIC lob.h PRIVATE lob.cpp bufferedreader.h)
 
 set_target_properties(lob PROPERTIES FOLDER lob)
 
