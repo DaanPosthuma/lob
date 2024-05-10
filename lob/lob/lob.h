@@ -47,17 +47,6 @@ namespace lob {
   {
     Buy, Sell
   };
-
-}
-
-template <>
-struct std::formatter<lob::Direction> : std::formatter<std::string> {
-  auto format(lob::Direction direction, format_context& ctx) const {
-    return direction == lob::Direction::Buy ? std::format_to(ctx.out(), "Buy") : std::format_to(ctx.out(), "Sell");
-  }
-};
-
-namespace lob{
   
   class Level {
   public:
