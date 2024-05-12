@@ -26,49 +26,49 @@ enum class itch_t {
 };
 using MSG = itch_t;
 template <MSG __type>
-unsigned char constexpr netlen = -1;
+inline unsigned char constexpr netlen = -1;
 template <>
-constexpr unsigned char netlen<MSG::SYSEVENT> = 12;
+inline constexpr unsigned char netlen<MSG::SYSEVENT> = 12;
 template <>
-constexpr unsigned char netlen<MSG::STOCK_DIRECTORY> = 39;
+inline constexpr unsigned char netlen<MSG::STOCK_DIRECTORY> = 39;
 template <>
-constexpr unsigned char netlen<MSG::TRADING_ACTION> = 25;
+inline constexpr unsigned char netlen<MSG::TRADING_ACTION> = 25;
 template <>
-constexpr unsigned char netlen<MSG::REG_SHO_RESTRICT> = 20;
+inline constexpr unsigned char netlen<MSG::REG_SHO_RESTRICT> = 20;
 template <>
-constexpr unsigned char netlen<MSG::MPID_POSITION> = 26;
+inline constexpr unsigned char netlen<MSG::MPID_POSITION> = 26;
 template <>
-constexpr unsigned char netlen<MSG::MWCB_DECLINE> = 35;
+inline constexpr unsigned char netlen<MSG::MWCB_DECLINE> = 35;
 template <>
-constexpr unsigned char netlen<MSG::MWCB_STATUS> = 12;
+inline constexpr unsigned char netlen<MSG::MWCB_STATUS> = 12;
 template <>
-constexpr unsigned char netlen<MSG::IPO_QUOTE_UPDATE> = 28;
+inline constexpr unsigned char netlen<MSG::IPO_QUOTE_UPDATE> = 28;
 template <>
-constexpr unsigned char netlen<MSG::ADD_ORDER> = 36;
+inline constexpr unsigned char netlen<MSG::ADD_ORDER> = 36;
 template <>
-constexpr unsigned char netlen<MSG::ADD_ORDER_MPID> = 40;
+inline constexpr unsigned char netlen<MSG::ADD_ORDER_MPID> = 40;
 template <>
-constexpr unsigned char netlen<MSG::EXECUTE_ORDER> = 31;
+inline constexpr unsigned char netlen<MSG::EXECUTE_ORDER> = 31;
 template <>
-constexpr unsigned char netlen<MSG::EXECUTE_ORDER_WITH_PRICE> = 36;
+inline constexpr unsigned char netlen<MSG::EXECUTE_ORDER_WITH_PRICE> = 36;
 template <>
-constexpr unsigned char netlen<MSG::REDUCE_ORDER> = 23;
+inline constexpr unsigned char netlen<MSG::REDUCE_ORDER> = 23;
 template <>
-constexpr unsigned char netlen<MSG::DELETE_ORDER> = 19;
+inline constexpr unsigned char netlen<MSG::DELETE_ORDER> = 19;
 template <>
-constexpr unsigned char netlen<MSG::REPLACE_ORDER> = 35;
+inline constexpr unsigned char netlen<MSG::REPLACE_ORDER> = 35;
 template <>
-constexpr unsigned char netlen<MSG::TRADE> = 44;
+inline constexpr unsigned char netlen<MSG::TRADE> = 44;
 template <>
-constexpr unsigned char netlen<MSG::CROSS_TRADE> = 40;
+inline constexpr unsigned char netlen<MSG::CROSS_TRADE> = 40;
 template <>
-constexpr unsigned char netlen<MSG::BROKEN_TRADE> = 19;
+inline constexpr unsigned char netlen<MSG::BROKEN_TRADE> = 19;
 template <>
-constexpr unsigned char netlen<MSG::NET_ORDER_IMBALANCE> = 50;
+inline constexpr unsigned char netlen<MSG::NET_ORDER_IMBALANCE> = 50;
 template <>
-constexpr unsigned char netlen<MSG::RETAIL_PRICE_IMPROVEMENT> = 20;
+inline constexpr unsigned char netlen<MSG::RETAIL_PRICE_IMPROVEMENT> = 20;
 template <>
-constexpr unsigned char netlen<MSG::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
+inline constexpr unsigned char netlen<MSG::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
 template <itch_t __code>
 struct itch_message {
