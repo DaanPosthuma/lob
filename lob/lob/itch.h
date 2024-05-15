@@ -1,7 +1,39 @@
 #pragma once
 #include <sys/types.h>
 
-enum class itch_t {
+#ifdef _WIN32
+
+#include <cstdint>
+
+uint64_t be64toh(uint64_t big_endian_value) {
+    // Swap byte order manually
+    return ((big_endian_value & 0x00000000000000FFULL) << 56) |
+           ((big_endian_value & 0x000000000000FF00ULL) << 40) |
+           ((big_endian_value & 0x0000000000FF0000ULL) << 24) |
+           ((big_endian_value & 0x00000000FF000000ULL) << 8) |
+           ((big_endian_value & 0x000000FF00000000ULL) >> 8) |
+           ((big_endian_value & 0x0000FF0000000000ULL) >> 24) |
+           ((big_endian_value & 0x00FF000000000000ULL) >> 40) |
+           ((big_endian_value & 0xFF00000000000000ULL) >> 56);
+}
+
+uint32_t be32toh(uint32_t big_endian_value) {
+    // Swap byte order manually
+    return ((big_endian_value & 0x000000FFU) << 24) |
+           ((big_endian_value & 0x0000FF00U) << 8) |
+           ((big_endian_value & 0x00FF0000U) >> 8) |
+           ((big_endian_value & 0xFF000000U) >> 24);
+}
+
+uint16_t be16toh(uint16_t big_endian_value) {
+    // Swap byte order manually
+    return ((big_endian_value & 0x00FFU) << 8) |
+           ((big_endian_value & 0xFF00U) >> 8);
+}
+
+#endif
+
+enum class MessageType {
   SYSEVENT = 'S',
   STOCK_DIRECTORY = 'R',
   TRADING_ACTION = 'H',
@@ -24,55 +56,54 @@ enum class itch_t {
   RETAIL_PRICE_IMPROVEMENT = 'N',
   PROCESS_LULD_AUCTION_COLLAR_MESSAGE = 'J'
 };
-using MSG = itch_t;
-template <MSG __type>
+template <MessageType __type>
 unsigned char constexpr netlen = -1;
 template <>
-constexpr unsigned char netlen<MSG::SYSEVENT> = 12;
+constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
 template <>
-constexpr unsigned char netlen<MSG::STOCK_DIRECTORY> = 39;
+constexpr unsigned char netlen<MessageType::STOCK_DIRECTORY> = 39;
 template <>
-constexpr unsigned char netlen<MSG::TRADING_ACTION> = 25;
+constexpr unsigned char netlen<MessageType::TRADING_ACTION> = 25;
 template <>
-constexpr unsigned char netlen<MSG::REG_SHO_RESTRICT> = 20;
+constexpr unsigned char netlen<MessageType::REG_SHO_RESTRICT> = 20;
 template <>
-constexpr unsigned char netlen<MSG::MPID_POSITION> = 26;
+constexpr unsigned char netlen<MessageType::MPID_POSITION> = 26;
 template <>
-constexpr unsigned char netlen<MSG::MWCB_DECLINE> = 35;
+constexpr unsigned char netlen<MessageType::MWCB_DECLINE> = 35;
 template <>
-constexpr unsigned char netlen<MSG::MWCB_STATUS> = 12;
+constexpr unsigned char netlen<MessageType::MWCB_STATUS> = 12;
 template <>
-constexpr unsigned char netlen<MSG::IPO_QUOTE_UPDATE> = 28;
+constexpr unsigned char netlen<MessageType::IPO_QUOTE_UPDATE> = 28;
 template <>
-constexpr unsigned char netlen<MSG::ADD_ORDER> = 36;
+constexpr unsigned char netlen<MessageType::ADD_ORDER> = 36;
 template <>
-constexpr unsigned char netlen<MSG::ADD_ORDER_MPID> = 40;
+constexpr unsigned char netlen<MessageType::ADD_ORDER_MPID> = 40;
 template <>
-constexpr unsigned char netlen<MSG::EXECUTE_ORDER> = 31;
+constexpr unsigned char netlen<MessageType::EXECUTE_ORDER> = 31;
 template <>
-constexpr unsigned char netlen<MSG::EXECUTE_ORDER_WITH_PRICE> = 36;
+constexpr unsigned char netlen<MessageType::EXECUTE_ORDER_WITH_PRICE> = 36;
 template <>
-constexpr unsigned char netlen<MSG::REDUCE_ORDER> = 23;
+constexpr unsigned char netlen<MessageType::REDUCE_ORDER> = 23;
 template <>
-constexpr unsigned char netlen<MSG::DELETE_ORDER> = 19;
+constexpr unsigned char netlen<MessageType::DELETE_ORDER> = 19;
 template <>
-constexpr unsigned char netlen<MSG::REPLACE_ORDER> = 35;
+constexpr unsigned char netlen<MessageType::REPLACE_ORDER> = 35;
 template <>
-constexpr unsigned char netlen<MSG::TRADE> = 44;
+constexpr unsigned char netlen<MessageType::TRADE> = 44;
 template <>
-constexpr unsigned char netlen<MSG::CROSS_TRADE> = 40;
+constexpr unsigned char netlen<MessageType::CROSS_TRADE> = 40;
 template <>
-constexpr unsigned char netlen<MSG::BROKEN_TRADE> = 19;
+constexpr unsigned char netlen<MessageType::BROKEN_TRADE> = 19;
 template <>
-constexpr unsigned char netlen<MSG::NET_ORDER_IMBALANCE> = 50;
+constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 50;
 template <>
-constexpr unsigned char netlen<MSG::RETAIL_PRICE_IMPROVEMENT> = 20;
+constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
 template <>
-constexpr unsigned char netlen<MSG::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
+constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
-template <itch_t __code>
+template <MessageType __code>
 struct itch_message {
-  static constexpr itch_t code = __code;
+  static constexpr MessageType code = __code;
   static constexpr unsigned char network_len = netlen<__code>;
   static itch_message parse(char const *ptr)
   {
@@ -115,9 +146,9 @@ static oid_t read_oid(char const *src) { return oid_t(read_eight(src)); }
 static price_t read_price(char const *src) { return price_t(read_four(src)); }
 static qty_t read_qty(char const *src) { return qty_t(read_four(src)); }
 static uint16_t read_locate(char const *src) { return read_two(src); }
-using add_order_t = itch_message<MSG::ADD_ORDER>;
+using add_order_t = itch_message<MessageType::ADD_ORDER>;
 template <>
-struct itch_message<MSG::ADD_ORDER> {
+struct itch_message<MessageType::ADD_ORDER> {
   itch_message(timestamp_t __timestamp, oid_t __oid, price_t __price,
                qty_t __qty, uint16_t __stock_locate, BUY_SELL __buy)
       : timestamp(__timestamp),
@@ -141,9 +172,9 @@ struct itch_message<MSG::ADD_ORDER> {
                        read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
   }
 };
-using add_order_mpid_t = itch_message<MSG::ADD_ORDER_MPID>;
+using add_order_mpid_t = itch_message<MessageType::ADD_ORDER_MPID>;
 template <>
-struct itch_message<MSG::ADD_ORDER_MPID> {
+struct itch_message<MessageType::ADD_ORDER_MPID> {
   itch_message(add_order_t const __base) : add_msg(__base) {}
   add_order_t const add_msg;
   static itch_message parse(char const *ptr)
@@ -151,9 +182,9 @@ struct itch_message<MSG::ADD_ORDER_MPID> {
     return itch_message(add_order_t::parse(ptr));
   }
 };
-using execute_order_t = itch_message<MSG::EXECUTE_ORDER>;
+using execute_order_t = itch_message<MessageType::EXECUTE_ORDER>;
 template <>
-struct itch_message<MSG::EXECUTE_ORDER> {
+struct itch_message<MessageType::EXECUTE_ORDER> {
   itch_message(oid_t __oid, timestamp_t __t, qty_t __q, uint16_t __s)
       : oid(__oid), timestamp(__t), qty(__q), stock_locate(__s)
   {
@@ -168,9 +199,9 @@ struct itch_message<MSG::EXECUTE_ORDER> {
                         read_qty(ptr + 19), read_locate(ptr + 1));
   }
 };
-using execute_with_price_t = itch_message<MSG::EXECUTE_ORDER_WITH_PRICE>;
+using execute_with_price_t = itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE>;
 template <>
-struct itch_message<MSG::EXECUTE_ORDER_WITH_PRICE> {
+struct itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE> {
   itch_message(execute_order_t const __base) : exec(__base) {}
   execute_order_t const exec;
   static itch_message parse(char const *ptr)
@@ -178,9 +209,9 @@ struct itch_message<MSG::EXECUTE_ORDER_WITH_PRICE> {
     return itch_message(execute_order_t::parse(ptr));
   }
 };
-using order_reduce_t = itch_message<MSG::REDUCE_ORDER>;
+using order_reduce_t = itch_message<MessageType::REDUCE_ORDER>;
 template <>
-struct itch_message<MSG::REDUCE_ORDER> {
+struct itch_message<MessageType::REDUCE_ORDER> {
   itch_message(oid_t __o, timestamp_t __t, qty_t __q)
       : oid(__o), timestamp(__t), qty(__q)
   {
@@ -194,9 +225,9 @@ struct itch_message<MSG::REDUCE_ORDER> {
                         read_qty(ptr + 19));
   }
 };
-using order_delete_t = itch_message<MSG::DELETE_ORDER>;
+using order_delete_t = itch_message<MessageType::DELETE_ORDER>;
 template <>
-struct itch_message<MSG::DELETE_ORDER> {
+struct itch_message<MessageType::DELETE_ORDER> {
   itch_message(oid_t __o, timestamp_t __t) : oid(__o), timestamp(__t) {}
   oid_t const oid;
   timestamp_t const timestamp;
@@ -205,9 +236,9 @@ struct itch_message<MSG::DELETE_ORDER> {
     return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
   }
 };
-using order_replace_t = itch_message<MSG::REPLACE_ORDER>;
+using order_replace_t = itch_message<MessageType::REPLACE_ORDER>;
 template <>
-struct itch_message<MSG::REPLACE_ORDER> {
+struct itch_message<MessageType::REPLACE_ORDER> {
   itch_message(oid_t __old_oid, oid_t __new_oid, qty_t __q, price_t __p)
       : oid(__old_oid), new_order_id(__new_oid), new_qty(__q), new_price(__p)
   {

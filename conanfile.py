@@ -8,7 +8,7 @@ class CompressorRecipe(ConanFile):
 
     def requirements(self):
         #self.requires("rapidjson/cci.20211112")
-        #self.requires("boost/1.80.0")
+        self.requires("boost/1.84.0")
         #self.requires("openssl/1.1.1q")
         pass
 

@@ -10,11 +10,15 @@
 
 add_library(lob)
 
-target_sources(lob PUBLIC lob.h PRIVATE lob.cpp bufferedreader.h)
+find_package(Boost REQUIRED)
 
-set_target_properties(lob PROPERTIES FOLDER lob)
+target_sources(lob PUBLIC lob.h PRIVATE lob.cpp)
 
-target_include_directories(lob PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(lob ${Boost_LIBRARIES})
+
+#set_target_properties(lob PROPERTIES FOLDER lob)
+
+target_include_directories(lob PRIVATE ${Boost_INCLUDE_DIRS} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 #target_compile_options(lob
 #    INTERFACE
