@@ -7,8 +7,6 @@
 #include <utility>
 #include <chrono>
 
-using namespace std::string_literals;
-
 namespace {
 
   class Reader {
@@ -46,10 +44,7 @@ namespace {
     break;                              \
   }
 
-void itch_reader::read() {
-  std::cout << "lob::test()";
-
-  auto const filename = "C:\\dev\\VS\\lob\\01302019.NASDAQ_ITCH50"s;
+void itch_reader::read(std::string const& filename) {
 
   std::print("Loading {}\n", filename);
 

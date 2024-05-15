@@ -8,7 +8,11 @@
 
 namespace {
 
-  TEST(LOBTests, Trivial) {
+  TEST(ItchReader, Read) {
+    itch_reader::read("C:\\dev\\VS\\lob\\01302019.NASDAQ_ITCH50");
+  }
+
+  TEST(LOB, WalkingTheBook) {
     
     auto book = lob::LimitOrderBook<4>();
     
