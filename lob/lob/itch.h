@@ -56,55 +56,33 @@ enum class MessageType {
   RETAIL_PRICE_IMPROVEMENT = 'N',
   PROCESS_LULD_AUCTION_COLLAR_MESSAGE = 'J'
 };
-template <MessageType __type>
-unsigned char constexpr netlen = -1;
-template <>
-constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
-template <>
-constexpr unsigned char netlen<MessageType::STOCK_DIRECTORY> = 39;
-template <>
-constexpr unsigned char netlen<MessageType::TRADING_ACTION> = 25;
-template <>
-constexpr unsigned char netlen<MessageType::REG_SHO_RESTRICT> = 20;
-template <>
-constexpr unsigned char netlen<MessageType::MPID_POSITION> = 26;
-template <>
-constexpr unsigned char netlen<MessageType::MWCB_DECLINE> = 35;
-template <>
-constexpr unsigned char netlen<MessageType::MWCB_STATUS> = 12;
-template <>
-constexpr unsigned char netlen<MessageType::IPO_QUOTE_UPDATE> = 28;
-template <>
-constexpr unsigned char netlen<MessageType::ADD_ORDER> = 36;
-template <>
-constexpr unsigned char netlen<MessageType::ADD_ORDER_MPID> = 40;
-template <>
-constexpr unsigned char netlen<MessageType::EXECUTE_ORDER> = 31;
-template <>
-constexpr unsigned char netlen<MessageType::EXECUTE_ORDER_WITH_PRICE> = 36;
-template <>
-constexpr unsigned char netlen<MessageType::REDUCE_ORDER> = 23;
-template <>
-constexpr unsigned char netlen<MessageType::DELETE_ORDER> = 19;
-template <>
-constexpr unsigned char netlen<MessageType::REPLACE_ORDER> = 35;
-template <>
-constexpr unsigned char netlen<MessageType::TRADE> = 44;
-template <>
-constexpr unsigned char netlen<MessageType::CROSS_TRADE> = 40;
-template <>
-constexpr unsigned char netlen<MessageType::BROKEN_TRADE> = 19;
-template <>
-constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 50;
-template <>
-constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
-template <>
-constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
+template <MessageType> constexpr unsigned char netlen = -1;
+template <> constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
+template <> constexpr unsigned char netlen<MessageType::STOCK_DIRECTORY> = 39;
+template <> constexpr unsigned char netlen<MessageType::TRADING_ACTION> = 25;
+template <> constexpr unsigned char netlen<MessageType::REG_SHO_RESTRICT> = 20;
+template <> constexpr unsigned char netlen<MessageType::MPID_POSITION> = 26;
+template <> constexpr unsigned char netlen<MessageType::MWCB_DECLINE> = 35;
+template <> constexpr unsigned char netlen<MessageType::MWCB_STATUS> = 12;
+template <> constexpr unsigned char netlen<MessageType::IPO_QUOTE_UPDATE> = 28;
+template <> constexpr unsigned char netlen<MessageType::ADD_ORDER> = 36;
+template <> constexpr unsigned char netlen<MessageType::ADD_ORDER_MPID> = 40;
+template <> constexpr unsigned char netlen<MessageType::EXECUTE_ORDER> = 31;
+template <> constexpr unsigned char netlen<MessageType::EXECUTE_ORDER_WITH_PRICE> = 36;
+template <> constexpr unsigned char netlen<MessageType::REDUCE_ORDER> = 23;
+template <> constexpr unsigned char netlen<MessageType::DELETE_ORDER> = 19;
+template <> constexpr unsigned char netlen<MessageType::REPLACE_ORDER> = 35;
+template <> constexpr unsigned char netlen<MessageType::TRADE> = 44;
+template <> constexpr unsigned char netlen<MessageType::CROSS_TRADE> = 40;
+template <> constexpr unsigned char netlen<MessageType::BROKEN_TRADE> = 19;
+template <> constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 50;
+template <> constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
+template <> constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
-template <MessageType __code>
+template <MessageType code>
 struct itch_message {
-  static constexpr MessageType code = __code;
-  static constexpr unsigned char network_len = netlen<__code>;
+  static constexpr MessageType code = code;
+  static constexpr unsigned char network_len = netlen<code>;
   static itch_message parse(char const *ptr)
   {
     static_cast<void>(ptr);
@@ -126,7 +104,7 @@ static uint64_t read_six(char const *src)
   uint64_t ret;
   char *pun = (char *)&ret;
   // it's not clear whether this is faster than six separate char assignments
-  memcpy(pun, src, 6);
+  std::memcpy(pun, src, 6);
   return (be64toh(ret) >> 16);
 }
 static uint32_t read_four(char const *src)
