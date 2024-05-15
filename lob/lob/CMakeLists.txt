@@ -12,11 +12,10 @@ add_library(lob)
 
 find_package(Boost REQUIRED)
 
-target_sources(lob PUBLIC lob.h PRIVATE lob.cpp)
+target_sources(lob PUBLIC lob.h PRIVATE lob.cpp itch_reader.cpp)
 
 target_link_libraries(lob ${Boost_LIBRARIES})
 
-#set_target_properties(lob PROPERTIES FOLDER lob)
 
 target_include_directories(lob PRIVATE ${Boost_INCLUDE_DIRS} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
