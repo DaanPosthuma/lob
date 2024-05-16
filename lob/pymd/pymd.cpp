@@ -2,25 +2,22 @@
 #include <md/itch_reader.h>
 #include <string>
 
+namespace py = pybind11;
+
 namespace {
 
   void readFile(std::string& filename) {
     itch_reader::read(filename);
   }
-
-  /*int fib(int n) {
-    auto g = itch_reader::fibonacci(n);
-    auto it = g.begin();
-    for (int i=0; i != n; ++i) {
-      ++it;
-    }
-    return *it;
-  }*/
-
 }
 
 PYBIND11_MODULE(pymd, m) {
   m.doc() = "market data plugin";
-  m.def("read", &readFile); 
+  m.def("read", &readFile);
+
+  py::class_<itch_reader::FileReader>(m, "FileReader")
+    .def(py::init<std::string const&>())
+    .def("next", &itch_reader::FileReader::next)
+    .def("currentMessageType", &itch_reader::FileReader::currentMessageType);
 }
 
