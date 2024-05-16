@@ -13,7 +13,7 @@ enable_testing()
 find_package(GTest REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Python COMPONENTS Interpreter Development)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(pybind11 CONFIG)
 
 include(GoogleTest)
 
