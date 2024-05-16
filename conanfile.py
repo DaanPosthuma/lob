@@ -5,6 +5,8 @@ from conan.tools.cmake import cmake_layout
 class CompressorRecipe(ConanFile):
     settings = ("os", "compiler", "build_type", "arch")
     generators = "CMakeToolchain", "CMakeDeps"
+    options = {"shared": [True, False], "fPIC": [True, False]}
+    default_options = {"shared": False, "fPIC": True}
 
     def requirements(self):
         #self.requires("rapidjson/cci.20211112")

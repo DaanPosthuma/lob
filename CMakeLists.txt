@@ -11,7 +11,7 @@ message("Building with CMake version: ${CMAKE_VERSION}")
 enable_testing()
 
 find_package(GTest REQUIRED)
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED iostreams)
 find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 CONFIG)
 
@@ -20,6 +20,7 @@ include(GoogleTest)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 #if(MSVC)
 #  add_compile_options(/W4 /WX)

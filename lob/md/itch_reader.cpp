@@ -38,17 +38,6 @@ namespace {
     return ret;
   }
 
-  std::generator<const std::uint64_t> fibonacci()
-  {
-    std::uint64_t a = 0, b = 1;
-    while (true)
-    {
-      co_yield b;
-      auto tmp = a;
-      a = b;
-      b += tmp;
-    }
-  }
 
 }
 
@@ -150,3 +139,16 @@ void itch_reader::read(std::string const& filename) {
   std::cout << numMessages << " messages in " << nanos << " nanos , " << nanos / (double)numMessages << " nanos per message" << std::endl;
 
 }
+
+
+std::generator<int> itch_reader::fibonacci(int n)
+{
+  int a = 0, b = 1;
+  while (true)
+  {
+    co_yield b;
+    a = std::exchange(b, a + b);
+  }
+}
+
+
