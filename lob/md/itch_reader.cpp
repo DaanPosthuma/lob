@@ -6,6 +6,8 @@
 //#include <print>
 #include <utility>
 #include <chrono>
+#include <coroutine>
+#include "__generator.hpp"
 
 namespace {
 
@@ -34,6 +36,18 @@ namespace {
     itch_message<__code> ret = itch_message<__code>::parse(reader.get(0));
     reader.advance(netlen<__code>);
     return ret;
+  }
+
+  std::generator<const std::uint64_t> fibonacci()
+  {
+    std::uint64_t a = 0, b = 1;
+    while (true)
+    {
+      co_yield b;
+      auto tmp = a;
+      a = b;
+      b += tmp;
+    }
   }
 
 }
