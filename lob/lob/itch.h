@@ -79,10 +79,10 @@ template <> constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 5
 template <> constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
 template <> constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
-template <MessageType code>
+template <MessageType __code>
 struct itch_message {
-  static constexpr MessageType code = code;
-  static constexpr unsigned char network_len = netlen<code>;
+  static constexpr MessageType code = __code;
+  static constexpr unsigned char network_len = netlen<__code>;
   static itch_message parse(char const *ptr)
   {
     static_cast<void>(ptr);
