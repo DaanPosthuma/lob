@@ -10,6 +10,7 @@ message("Building with CMake version: ${CMAKE_VERSION}")
 
 enable_testing()
 
+find_package(Python REQUIRED)
 find_package(GTest REQUIRED)
 find_package(PyBind11 REQUIRED)
 
