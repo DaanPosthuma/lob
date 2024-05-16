@@ -6,3 +6,4 @@ CMakeUserPresets.json
 .vscode
 01302019.NASDAQ_ITCH50
 *.out
+*.swp
