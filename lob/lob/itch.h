@@ -56,28 +56,28 @@ enum class MessageType {
   RETAIL_PRICE_IMPROVEMENT = 'N',
   PROCESS_LULD_AUCTION_COLLAR_MESSAGE = 'J'
 };
-template <MessageType> constexpr unsigned char netlen = -1;
-template <> constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
-template <> constexpr unsigned char netlen<MessageType::STOCK_DIRECTORY> = 39;
-template <> constexpr unsigned char netlen<MessageType::TRADING_ACTION> = 25;
-template <> constexpr unsigned char netlen<MessageType::REG_SHO_RESTRICT> = 20;
-template <> constexpr unsigned char netlen<MessageType::MPID_POSITION> = 26;
-template <> constexpr unsigned char netlen<MessageType::MWCB_DECLINE> = 35;
-template <> constexpr unsigned char netlen<MessageType::MWCB_STATUS> = 12;
-template <> constexpr unsigned char netlen<MessageType::IPO_QUOTE_UPDATE> = 28;
-template <> constexpr unsigned char netlen<MessageType::ADD_ORDER> = 36;
-template <> constexpr unsigned char netlen<MessageType::ADD_ORDER_MPID> = 40;
-template <> constexpr unsigned char netlen<MessageType::EXECUTE_ORDER> = 31;
-template <> constexpr unsigned char netlen<MessageType::EXECUTE_ORDER_WITH_PRICE> = 36;
-template <> constexpr unsigned char netlen<MessageType::REDUCE_ORDER> = 23;
-template <> constexpr unsigned char netlen<MessageType::DELETE_ORDER> = 19;
-template <> constexpr unsigned char netlen<MessageType::REPLACE_ORDER> = 35;
-template <> constexpr unsigned char netlen<MessageType::TRADE> = 44;
-template <> constexpr unsigned char netlen<MessageType::CROSS_TRADE> = 40;
-template <> constexpr unsigned char netlen<MessageType::BROKEN_TRADE> = 19;
-template <> constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 50;
-template <> constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
-template <> constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
+template <MessageType> inline constexpr unsigned char netlen = -1;
+template <> inline constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
+template <> inline constexpr unsigned char netlen<MessageType::STOCK_DIRECTORY> = 39;
+template <> inline constexpr unsigned char netlen<MessageType::TRADING_ACTION> = 25;
+template <> inline constexpr unsigned char netlen<MessageType::REG_SHO_RESTRICT> = 20;
+template <> inline constexpr unsigned char netlen<MessageType::MPID_POSITION> = 26;
+template <> inline constexpr unsigned char netlen<MessageType::MWCB_DECLINE> = 35;
+template <> inline constexpr unsigned char netlen<MessageType::MWCB_STATUS> = 12;
+template <> inline constexpr unsigned char netlen<MessageType::IPO_QUOTE_UPDATE> = 28;
+template <> inline constexpr unsigned char netlen<MessageType::ADD_ORDER> = 36;
+template <> inline constexpr unsigned char netlen<MessageType::ADD_ORDER_MPID> = 40;
+template <> inline constexpr unsigned char netlen<MessageType::EXECUTE_ORDER> = 31;
+template <> inline constexpr unsigned char netlen<MessageType::EXECUTE_ORDER_WITH_PRICE> = 36;
+template <> inline constexpr unsigned char netlen<MessageType::REDUCE_ORDER> = 23;
+template <> inline constexpr unsigned char netlen<MessageType::DELETE_ORDER> = 19;
+template <> inline constexpr unsigned char netlen<MessageType::REPLACE_ORDER> = 35;
+template <> inline constexpr unsigned char netlen<MessageType::TRADE> = 44;
+template <> inline constexpr unsigned char netlen<MessageType::CROSS_TRADE> = 40;
+template <> inline constexpr unsigned char netlen<MessageType::BROKEN_TRADE> = 19;
+template <> inline constexpr unsigned char netlen<MessageType::NET_ORDER_IMBALANCE> = 50;
+template <> inline constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
+template <> inline constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
 template <MessageType __code>
 struct itch_message {

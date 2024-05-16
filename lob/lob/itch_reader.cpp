@@ -3,7 +3,7 @@
 #include <iostream>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/stream.hpp>
-#include <print>
+//#include <print>
 #include <utility>
 #include <chrono>
 
@@ -46,17 +46,17 @@ namespace {
 
 void itch_reader::read(std::string const& filename) {
 
-  std::print("Loading {}\n", filename);
+  std::cout << "Loading " << filename << std::endl;
 
   boost::iostreams::mapped_file_source file(filename);
 
   if(!file.is_open()) {
-    std::print("Could not load file");
+    std::cout << "Could not load file" << std::endl;
     return;
   }
 
   // Get pointer to the data
-  std::print("file size: {}\n", file.size());
+  std::cout << "file size: " << file.size() << std::endl;
 
   auto messageCounts = std::vector<size_t>(256, 0);
 
@@ -116,7 +116,7 @@ void itch_reader::read(std::string const& filename) {
         break;
       }
       default: {
-        std::print("Unknown message: {}\n", (char)msgtype);
+        std::cout << "Unknown message: " << (char)msgtype << std::endl;
         return;
       }
     }
@@ -128,11 +128,11 @@ void itch_reader::read(std::string const& filename) {
 
   for (char c='A'; c <= 'Z'; ++c) {
     if (messageCounts[c]) {
-      std::println("{}: {}", c, messageCounts[c]);
+      std::cout << c << ": " << messageCounts[c] << std::endl;
     }
   }
   
   size_t nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tStart).count();
-  std::println("{} messages in {} nanos , {} nanos per message", numMessages, nanos, nanos / (double)numMessages);
+  std::cout << numMessages << " messages in " << nanos << " nanos , " << nanos / (double)numMessages << " nanos per message" << std::endl;
 
 }

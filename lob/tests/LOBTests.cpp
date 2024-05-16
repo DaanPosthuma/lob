@@ -9,7 +9,8 @@
 namespace {
 
   TEST(ItchReader, Read) {
-    itch_reader::read("C:\\dev\\VS\\lob\\01302019.NASDAQ_ITCH50");
+    //itch_reader::read("C:\\dev\\VS\\lob\\01302019.NASDAQ_ITCH50");
+    itch_reader::read("/mnt/itch-data/01302019.NASDAQ_ITCH50");
   }
 
   TEST(LOB, WalkingTheBook) {
