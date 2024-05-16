@@ -10,9 +10,10 @@ message("Building with CMake version: ${CMAKE_VERSION}")
 
 enable_testing()
 
-find_package(Python REQUIRED)
 find_package(GTest REQUIRED)
-find_package(PyBind11 REQUIRED)
+find_package(Boost REQUIRED)
+find_package(Python COMPONENTS Interpreter Development)
+find_package(pybind11 CONFIG REQUIRED)
 
 include(GoogleTest)
 
