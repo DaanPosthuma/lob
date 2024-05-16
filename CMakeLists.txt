@@ -9,7 +9,10 @@ project(lob
 message("Building with CMake version: ${CMAKE_VERSION}")
 
 enable_testing()
+
 find_package(GTest REQUIRED)
+find_package(PyBind11 REQUIRED)
+
 include(GoogleTest)
 
 set(CMAKE_CXX_STANDARD 23)

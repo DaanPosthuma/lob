@@ -1,17 +1,17 @@
 ﻿#include <gtest/gtest.h>
 #include <lob/lob.h>
-#include <lob/itch_reader.h>
 #include <unordered_map>
 
-#include <lob/itch.h>
-#include <lob/order_book.h>
+/*#include <md/itch_reader.h>
+#include <md/itch.h>
+#include <md/order_book.h>*/
 
 namespace {
 
-  TEST(ItchReader, Read) {
+  /*TEST(ItchReader, Read) {
     //itch_reader::read("C:\\dev\\VS\\lob\\01302019.NASDAQ_ITCH50");
     itch_reader::read("/mnt/itch-data/01302019.NASDAQ_ITCH50");
-  }
+  }*/
 
   TEST(LOB, WalkingTheBook) {
     
