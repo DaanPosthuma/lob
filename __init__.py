@@ -3,7 +3,7 @@ sys.path.append(r'./build/lob/pymd/RelWithDebInfo')
 
 import pymd as md
 
-reader = md.ItchReader(r"C:\dev\VS\lob\data\01302019.NASDAQ_ITCH50")
+reader = md.ItchReader(r"./data/01302019.NASDAQ_ITCH50")
 
 count = 0
 def count_message(message):
