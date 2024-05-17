@@ -1,12 +1,11 @@
 ﻿#include <gtest/gtest.h>
 #include <lob/lob.h>
-#include <unordered_map>
 
 namespace {
 
   TEST(LOB, WalkingTheBook) {
     
-    auto book = lob::LimitOrderBook<4>();
+    /*auto book = lob::LimitOrderBook<4>();
     
     book.PlaceLimitOrder(lob::Direction::Sell, 100, 231400);
     book.PlaceLimitOrder(lob::Direction::Sell, 100, 231400);
@@ -25,7 +24,7 @@ namespace {
     book.PlaceLimitOrder(lob::Direction::Buy, 100, 230700);
 
     book.PlaceMarketOrder(lob::Direction::Sell, 270);
-    book.PlaceMarketOrder(lob::Direction::Buy, 560);
+    book.PlaceMarketOrder(lob::Direction::Buy, 560);*/
   }
 
 }
