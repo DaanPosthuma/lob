@@ -9,7 +9,6 @@ class CompressorRecipe(ConanFile):
     default_options = {"shared": False, "fPIC": True}
 
     def requirements(self):
-        #self.requires("rapidjson/cci.20211112")
         self.requires("boost/1.84.0")
         self.requires("pybind11/2.12.0")
         pass
