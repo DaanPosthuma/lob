@@ -1,23 +1,32 @@
 #include <pybind11/pybind11.h>
-#include <md/itch_reader.h>
+#include <pybind11/stl.h>
+#include <md/MappedFile.h>
 #include <string>
+#include <variant>
 
 namespace py = pybind11;
+using namespace std::string_literals;
 
 namespace {
-
-  void readFile(std::string& filename) {
-    itch_reader::read(filename);
-  }
+    std::map<std::string, std::variant<std::string, int>> test() {
+        std::map<std::string, std::variant<std::string, int>> ret;
+        ret["test"] = "test"s;
+        ret["three"] = 3;
+        return ret;
+    }
 }
 
 PYBIND11_MODULE(pymd, m) {
+  
   m.doc() = "market data plugin";
-  m.def("read", &readFile);
+  
+  m.def("test", &test);
 
-  py::class_<itch_reader::FileReader>(m, "FileReader")
-    .def(py::init<std::string const&>())
-    .def("next", &itch_reader::FileReader::next)
-    .def("currentMessageType", &itch_reader::FileReader::currentMessageType);
+  py::class_<md::MappedFile>(m, "MappedFile")
+    .def(py::init<std::string const&>());
+    /*.def("next", &itch_reader::FileReader::next)
+    .def("reset", &itch_reader::FileReader::reset)
+    .def("currentMessage", &itch_reader::FileReader::currentMessage)
+    .def("currentMessageType", &itch_reader::FileReader::currentMessageType)*/
 }
 

@@ -8,7 +8,7 @@ endforeach()
 
 add_library(md)
 
-target_sources(md PUBLIC itch_reader.h PRIVATE itch_reader.cpp)
+target_sources(md PUBLIC MappedFile.h PRIVATE MappedFile.cpp)
 
 target_link_libraries(md ${Boost_LIBRARIES})
 
@@ -18,5 +18,4 @@ target_include_directories(md
 	PUBLIC 
 		${CMAKE_CURRENT_SOURCE_DIR}/..
 )
-
 
