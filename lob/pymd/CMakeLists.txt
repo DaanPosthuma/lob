@@ -1,3 +1,3 @@
-pybind11_add_module(pymd pymd.cpp)
+pybind11_add_module(pymd pymd.cpp ItchReader.cpp)
 
 target_link_libraries(pymd PRIVATE md)

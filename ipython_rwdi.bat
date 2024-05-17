@@ -1,3 +1,3 @@
 set PYTHONPATH=./build/lob/pymd/RelWithDebInfo
-ipython
+ipython -i __init__.py
 

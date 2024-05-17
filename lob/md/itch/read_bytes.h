@@ -44,26 +44,30 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-static uint64_t read_eight(char const *src)
-{
-  return be64toh(*(uint64_t const *)src);
-}
+namespace md::itch::read_bytes {
 
-static uint64_t read_six(char const *src)
-{
-  uint64_t ret;
-  char *pun = (char *)&ret;
-  // it's not clear whether this is faster than six separate char assignments
-  std::memcpy(pun, src, 6);
-  return (be64toh(ret) >> 16);
-}
+  static uint64_t read_eight(char const *src)
+  {
+    return be64toh(*(uint64_t const *)src);
+  }
 
-static uint32_t read_four(char const *src)
-{
-  return be32toh(*(uint32_t const *)src);
-}
+  static uint64_t read_six(char const *src)
+  {
+    uint64_t ret;
+    char *pun = (char *)&ret;
+    // it's not clear whether this is faster than six separate char assignments
+    std::memcpy(pun, src, 6);
+    return (be64toh(ret) >> 16);
+  }
 
-static uint16_t read_two(char const *src)
-{
-  return be16toh(*(uint16_t const *)src);
-}
+  static uint32_t read_four(char const *src)
+  {
+    return be32toh(*(uint32_t const *)src);
+  }
+
+  static uint16_t read_two(char const *src)
+  {
+    return be16toh(*(uint16_t const *)src);
+  }
+
+} // md::itch::read_bytes

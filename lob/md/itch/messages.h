@@ -43,6 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace md::itch::messages {
 
   using namespace md::itch::types;
+  using namespace md::itch::read_bytes;
 
   template <MessageType> inline constexpr unsigned char netlen = -1;
   template <> inline constexpr unsigned char netlen<MessageType::SYSEVENT> = 12;
@@ -67,10 +68,10 @@ namespace md::itch::messages {
   template <> inline constexpr unsigned char netlen<MessageType::RETAIL_PRICE_IMPROVEMENT> = 20;
   template <> inline constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_MESSAGE> = 35;
 
-  template <MessageType __code>
+  template <MessageType messageType>
   struct itch_message {
-    static constexpr MessageType code = __code;
-    static constexpr unsigned char network_len = netlen<__code>;
+    //static constexpr MessageType code = __code;
+    //static constexpr unsigned char network_len = netlen<__code>;
     static itch_message parse(char const *ptr)
     {
       static_cast<void>(ptr);
