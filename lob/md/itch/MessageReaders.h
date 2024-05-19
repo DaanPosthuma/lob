@@ -4,6 +4,9 @@
 #include <md/itch/messages.h>
 #include <md/itch/types.h>
 
+#include <array>
+#include <functional>
+
 namespace md::itch {
 
 template <md::itch::types::MessageType messageType>
