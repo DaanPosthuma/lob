@@ -30,6 +30,10 @@ class OrderId {
     return OrderId(id++);
   }
 
+  explicit operator int () const {
+    return mId;
+  }
+
   friend struct std::hash<lob::OrderId>;
 
  private:
@@ -64,7 +68,6 @@ class Level {
   int mLevel;
 };
 
-
 }  // namespace lob
 
 namespace std {
@@ -78,47 +81,49 @@ struct hash<lob::OrderId> {
 
 namespace lob {
 
-template <int Precision>
-class LimitOrder {
- public:
-  LimitOrder(int size, Level<Precision> level, OrderId orderId) : mSize(size), mLevel(level), mOrderId(orderId) {}
-
-  void print() const {
-    std::cout << "LO (size=" << mSize << ", orderId=" << mOrderId << ")" << std::endl;
-  }
-
-  int GetSize() const {
-    return mSize;
-  }
-
-  LimitOrder createSizeAmendedOrder(int newSize) const {
-    return LimitOrder(newSize, mLevel, mOrderId);
-  }
-
- private:
-  int mSize;
-  Level<Precision> mLevel;
-  OrderId mOrderId;
-};
-
 enum class Direction {
   Buy,
   Sell
 };
 
 template <int Precision>
+class LimitOrder {
+ public:
+  LimitOrder(int size, Direction direction, Level<Precision> level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
+
+  auto size() const { return mSize; }
+  auto direction() const { return mDirection; }
+  auto level() const { return mLevel; }
+  auto orderId() const { return mOrderId; }
+  
+  /*LimitOrder createSizeAmendedOrder(int newSize) const {
+    return LimitOrder(newSize, mLevel, mOrderId);
+  }*/
+
+ private:
+  int mSize;
+  Direction mDirection; // todo: remove
+  Level<Precision> mLevel; // todo: remove
+  OrderId mOrderId;
+};
+
+template <int Precision>
 class LevelOrders {
  public:
-  auto add(int size, Level<Precision> level, OrderId orderId) {
+  auto add(int size, Direction direction, Level<Precision> level, OrderId orderId) {
     mDepth += size;
-    return mOrders.emplace(mOrders.begin(), size, level, orderId);
+    return mOrders.emplace(mOrders.begin(), size, direction, level, orderId);
+  }
+  void remove(std::list<LimitOrder<Precision>>::iterator it) {
+    mDepth -= it->size();
+    mOrders.erase(it);
   }
   auto empty() const { return mOrders.empty(); }
   auto& oldest() {
     return *mOrders.rbegin();
   }
   void deleteOldest() {
-    mDepth -= mOrders.back().GetSize();
+    mDepth -= mOrders.back().size();
     mOrders.pop_back();
   }
 
@@ -141,9 +146,24 @@ class LimitOrderBook {
 
   OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const Level<Precision> level) {
     // todo(?): check if we can (partially) trade
-    auto it = (direction == Direction::Sell ? mAsk : mBid)[level].add(size, level, orderId);
+    auto it = (direction == Direction::Sell ? mAsk : mBid)[level].add(size, direction, level, orderId);
     mOrders.emplace(orderId, it);
     return orderId;
+  }
+
+  void deleteOrder(const OrderId orderId) {
+    if (auto it = mOrders.find(orderId); it != mOrders.end()) {
+      auto const orderIt = it->second;
+      auto const level = orderIt->level();
+      auto const direction = orderIt->direction();
+      auto& side = direction == Direction::Sell ? mAsk : mBid;
+      side[level].remove(orderIt);
+      if (side[level].empty()) side.erase(level);
+      mOrders.erase(it);
+    }
+    else {
+      throw std::runtime_error("Order id not in order book");
+    }
   }
 
   auto bid() const {
@@ -213,11 +233,11 @@ class LimitOrderBook {
   std::map<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
   std::map<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
 
-  inline friend std::ostream& operator << (std::ostream& ostr, LimitOrderBook const& book) {
+  inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
     ostr << "Orders: ";
-    std::ranges::for_each(book.mOrders | std::views::keys, [first=true](auto orderId) mutable { std::cout << (first ? "" : ",") << orderId; first = false; });
-    
+    std::ranges::for_each(book.mOrders | std::views::keys, [first = true](auto orderId) mutable { std::cout << (first ? "" : ",") << orderId; first = false; });
+
     ostr << std::endl;
     ostr << "Bids: " << std::endl;
     for (auto const& [level, orders] : book.mBid) {
@@ -230,7 +250,6 @@ class LimitOrderBook {
     ostr << "[ LimitOrderBook end ]" << std::endl;
     return ostr;
   }
-
 };
 
 }  // namespace lob
