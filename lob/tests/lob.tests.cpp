@@ -6,7 +6,7 @@ using namespace std::string_literals;
 namespace {
 
 
-TEST(LOB, WalkingTheBook) {
+TEST(LOB, AddAndDelete) {
   auto book = lob::LimitOrderBook<4>();
 
   book.addOrder(lob::Direction::Sell, 100, 231400);
@@ -27,6 +27,8 @@ TEST(LOB, WalkingTheBook) {
 
   ASSERT_EQ(static_cast<int>(book.bid()), 230900);
   ASSERT_EQ(static_cast<int>(book.ask()), 231200);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.bid()), 23.09);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.ask()), 23.12);
   ASSERT_EQ(book.bidDepth(), 200);
   ASSERT_EQ(book.askDepth(), 250);
 
@@ -43,6 +45,8 @@ TEST(LOB, WalkingTheBook) {
 
   ASSERT_EQ(static_cast<int>(book.bid()), 230900);
   ASSERT_EQ(static_cast<int>(book.ask()), 231200);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.bid()), 23.09);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.ask()), 23.12);
   ASSERT_EQ(book.bidDepth(), 100);
   ASSERT_EQ(book.askDepth(), 250);
 
@@ -50,6 +54,8 @@ TEST(LOB, WalkingTheBook) {
 
   ASSERT_EQ(static_cast<int>(book.bid()), 230800);
   ASSERT_EQ(static_cast<int>(book.ask()), 231200);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.bid()), 23.08);
+  ASSERT_FLOAT_EQ(static_cast<double>(book.ask()), 23.12);
   ASSERT_EQ(book.bidDepth(), 200);
   ASSERT_EQ(book.askDepth(), 250);
 

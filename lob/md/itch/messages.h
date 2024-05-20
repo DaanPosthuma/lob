@@ -79,6 +79,8 @@ namespace md::itch::messages {
     }
   };
 
+
+  using stock_directory_t = itch_message<MessageType::STOCK_DIRECTORY>;
   using add_order_t = itch_message<MessageType::ADD_ORDER>;
   using add_order_mpid_t = itch_message<MessageType::ADD_ORDER_MPID>;
   using execute_order_t = itch_message<MessageType::EXECUTE_ORDER>;
@@ -95,6 +97,23 @@ namespace md::itch::messages {
   static price_t read_price(char const *src) { return price_t(read_four(src)); }
   static qty_t read_qty(char const *src) { return qty_t(read_four(src)); }
   static uint16_t read_locate(char const *src) { return read_two(src); }
+
+  template <>
+  struct itch_message<MessageType::STOCK_DIRECTORY> {
+    itch_message(uint16_t stock_locate, timestamp_t timestamp, char marketCategory, std::string_view stock)
+        : stock_locate(stock_locate), timestamp(timestamp), marketCategory(marketCategory), stock(stock)
+    {
+    }
+    uint16_t const stock_locate;
+    timestamp_t const timestamp;
+    std::string const stock;
+    char const marketCategory;
+
+    static itch_message parse(char const *ptr)
+    {
+      return stock_directory_t(read_locate(ptr + 1), read_timestamp(ptr + 5), ptr[19], {&ptr[11], 8});
+    }
+  };
 
   template <>
   struct itch_message<MessageType::ADD_ORDER> {

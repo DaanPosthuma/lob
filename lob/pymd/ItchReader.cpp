@@ -22,7 +22,7 @@ int pymd::ItchReader::read(int num) const {
     } else {
     }
 
-    md::itch::skip(messageType, reader);
+    md::itch::skipCurrentMessage(reader);
   }
 
   return num;
