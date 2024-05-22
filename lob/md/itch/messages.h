@@ -80,6 +80,7 @@ namespace md::itch::messages {
   };
 
 
+  using sys_event_t = itch_message<MessageType::SYSEVENT>;
   using stock_directory_t = itch_message<MessageType::STOCK_DIRECTORY>;
   using add_order_t = itch_message<MessageType::ADD_ORDER>;
   using add_order_mpid_t = itch_message<MessageType::ADD_ORDER_MPID>;
@@ -99,11 +100,21 @@ namespace md::itch::messages {
   static uint16_t read_locate(char const *src) { return read_two(src); }
 
   template <>
+  struct itch_message<MessageType::SYSEVENT> {
+    itch_message(timestamp_t timeStamp, char eventCode) : timeStamp(timeStamp), eventCode(eventCode) {}
+    timestamp_t const timeStamp;
+    char const eventCode;
+    static itch_message parse(char const *ptr)
+    {
+      return sys_event_t(read_timestamp(ptr + 5), ptr[11]);
+    }
+  };
+
+  template <>
   struct itch_message<MessageType::STOCK_DIRECTORY> {
     itch_message(uint16_t stock_locate, timestamp_t timestamp, char marketCategory, std::string stock)
-        : stock_locate(stock_locate), timestamp(timestamp), marketCategory(marketCategory), stock(stock)
-    {
-    }
+        : stock_locate(stock_locate), timestamp(timestamp), marketCategory(marketCategory), stock(stock) {}
+        
     uint16_t const stock_locate;
     timestamp_t const timestamp;
     std::string const stock;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 // deduced from https://github.com/charles-cooper/itch-order-book
 /*
 BSD 3-Clause License
@@ -66,7 +68,7 @@ namespace md::itch::types {
   };
 
   enum class BUY_SELL : char { BUY = 'B', SELL = 'S' };
-  enum class timestamp_t : uint64_t {};
+  using timestamp_t = std::chrono::nanoseconds;
   enum class oid_t : uint64_t {};
   enum class price_t : uint32_t {};
   enum class qty_t : uint32_t {};

@@ -18,6 +18,18 @@ auto getTestFile() {
   return md::MappedFile(filename);
 }
 
+auto HHMM(md::itch::types::timestamp_t timestamp) {
+
+    auto const hours = std::chrono::duration_cast<std::chrono::hours>(timestamp);
+    auto const minutes = std::chrono::duration_cast<std::chrono::minutes>(timestamp - hours);
+
+    std::ostringstream oss;
+    oss << std::setw(2) << std::setfill('0') << hours.count() << ":"
+        << std::setw(2) << std::setfill('0') << minutes.count();
+
+    return oss.str();
+}
+
 auto constexpr static maxCount = 100000000;
 
 TEST(ItchReader, SkipAll) {
@@ -62,14 +74,25 @@ TEST(ItchReader, CountMessageTypes) {
 TEST(ItchReader, TopNStocksByAdd) {
   auto const file = getTestFile();
   auto reader = md::BinaryDataReader(file.data(), file.size());
-  auto count = size_t(0);
 
   auto stockMap = std::vector<std::string>(std::numeric_limits<uint16_t>::max());
   auto securityCount = std::unordered_map<uint16_t, size_t>();
+  size_t startOfMessagesMsgId = 999999;
+  size_t startOfSystemHoursMsgId = 999999;
+  size_t startOfMarketHours = 999999;
 
-  while (count != maxCount && reader.remaining() > 3) {
+  for (size_t msgi=0; msgi != maxCount; ++msgi) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
     switch (currentMessageType) {
+      case md::itch::messages::MessageType::SYSEVENT: {
+        auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::SYSEVENT>(reader);
+        std::cout << "message " << msgi << " - SYSEVENT: " << HHMM(msg.timeStamp) << ", " << msg.eventCode << std::endl;
+        if (msg.eventCode == 'O') startOfMessagesMsgId = msgi;
+        else if (msg.eventCode == 'S') startOfSystemHoursMsgId = msgi;
+        else if (msg.eventCode == 'Q') startOfMarketHours = msgi;
+        
+        break;
+      }
       case md::itch::messages::MessageType::STOCK_DIRECTORY: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::STOCK_DIRECTORY>(reader);
         stockMap[msg.stock_locate] = msg.stock;
@@ -83,9 +106,17 @@ TEST(ItchReader, TopNStocksByAdd) {
       default:
         md::itch::skipCurrentMessage(reader);
     }
-
-    ++count;
   }
+
+  ASSERT_EQ(startOfMessagesMsgId, 0);
+  ASSERT_EQ(startOfSystemHoursMsgId, 219799);
+  ASSERT_EQ(startOfMarketHours, 10532163);
+  
+  ASSERT_EQ(stockMap[6449], "QQQ     "s);
+  ASSERT_EQ(stockMap[7291], "SPY     "s);
+  ASSERT_EQ(stockMap[331],  "AMD     "s);
+  ASSERT_EQ(stockMap[4260], "IWM     "s);
+  ASSERT_EQ(stockMap[14],   "AAPL    "s);
 
   auto const topSecurityCount = [&]{
     //auto vecPairs = std::ranges::to<std::vector<std::pair<uint16_t, size_t>>>(securityCount);
@@ -101,13 +132,6 @@ TEST(ItchReader, TopNStocksByAdd) {
     auto const [id, c] = topSecurityCount[i];
     std::cout << std::setw(5) << id << " (" << stockMap[id] << ")" << ": " << c << std::endl;
   }
-  ASSERT_EQ(count, maxCount);
-
-  ASSERT_EQ(stockMap[6449], "QQQ     "s);
-  ASSERT_EQ(stockMap[7291], "SPY     "s);
-  ASSERT_EQ(stockMap[331],  "AMD     "s);
-  ASSERT_EQ(stockMap[4260], "IWM     "s);
-  ASSERT_EQ(stockMap[14],   "AAPL    "s);
 
   ASSERT_EQ(topSecurityCount[0], (std::pair<uint16_t, size_t>(6449, 487300)));
   ASSERT_EQ(topSecurityCount[1], (std::pair<uint16_t, size_t>(7291, 390022)));
