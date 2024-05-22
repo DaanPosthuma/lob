@@ -100,7 +100,7 @@ namespace md::itch::messages {
 
   template <>
   struct itch_message<MessageType::STOCK_DIRECTORY> {
-    itch_message(uint16_t stock_locate, timestamp_t timestamp, char marketCategory, std::string_view stock)
+    itch_message(uint16_t stock_locate, timestamp_t timestamp, char marketCategory, std::string stock)
         : stock_locate(stock_locate), timestamp(timestamp), marketCategory(marketCategory), stock(stock)
     {
     }
@@ -111,7 +111,7 @@ namespace md::itch::messages {
 
     static itch_message parse(char const *ptr)
     {
-      return stock_directory_t(read_locate(ptr + 1), read_timestamp(ptr + 5), ptr[19], {&ptr[11], 8});
+      return stock_directory_t(read_locate(ptr + 1), read_timestamp(ptr + 5), ptr[19], std::string{&ptr[11], 8});
     }
   };
 

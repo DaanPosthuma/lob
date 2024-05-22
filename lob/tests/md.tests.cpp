@@ -92,9 +92,22 @@ TEST(ItchReader, TopNStocksByAdd) {
   std::cout << "Top " << N << ": " << std::endl;
   for (auto i : std::views::iota(0, N)) {
     auto const [id, c] = topSecurityCount[i];
-    std::cout << id << " (" << stockMap[id] << ")" << ": " << c << std::endl;
+    std::cout << std::setw(5) << id << " (" << stockMap[id] << ")" << ": " << c << std::endl;
   }
   ASSERT_EQ(count, maxCount);
+  
+  ASSERT_EQ(stockMap[6449], "QQQ     "s);
+  ASSERT_EQ(stockMap[7291], "SPY     "s);
+  ASSERT_EQ(stockMap[331],  "AMD     "s);
+  ASSERT_EQ(stockMap[4260], "IWM     "s);
+  ASSERT_EQ(stockMap[14],   "AAPL    "s);
+
+  ASSERT_EQ(topSecurityCount[0], (std::pair<uint16_t, size_t>(6449, 487300)));
+  ASSERT_EQ(topSecurityCount[1], (std::pair<uint16_t, size_t>(7291, 390022)));
+  ASSERT_EQ(topSecurityCount[2], (std::pair<uint16_t, size_t>(331, 375023)));
+  ASSERT_EQ(topSecurityCount[3], (std::pair<uint16_t, size_t>(4260, 284912)));
+  ASSERT_EQ(topSecurityCount[4], (std::pair<uint16_t, size_t>(14, 271383)));
+  
 }
 
 }  // namespace
