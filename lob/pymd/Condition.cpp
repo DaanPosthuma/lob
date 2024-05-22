@@ -3,7 +3,7 @@
 
 #include "Condition.h"
 
-using namespace std::string_literals;
+/*using namespace std::string_literals;
 
 std::string AndCondition::toString() const {
   auto ret = "("s;
@@ -30,3 +30,6 @@ PYBIND11_MODULE(pymdf, m) {
       .def(py::self | py::self)
       .def(py::self & py::self);
 }
+
+*/
+

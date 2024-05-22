@@ -1,3 +1,5 @@
+#pragma once
+/*
 #include <vector>
 #include <algorithm>
 #include <concepts>
@@ -70,3 +72,4 @@ inline auto operator | (Condition const& lhs, Condition const& rhs) {
 inline auto operator & (Condition const& lhs, Condition const& rhs) {
   return Condition(AndCondition{lhs, rhs});
 }
+*/
