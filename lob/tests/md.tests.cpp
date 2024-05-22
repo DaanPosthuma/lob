@@ -86,8 +86,15 @@ TEST(ItchReader, TopNStocksByAdd) {
 
     ++count;
   }
-  auto topSecurityCount = std::ranges::to<std::vector<std::pair<uint16_t, size_t>>>(securityCount);
-  std::ranges::sort(topSecurityCount, [](auto const& lhs, auto const& rhs) { return lhs.second > rhs.second; });
+
+  auto const topSecurityCount = [&]{
+    //auto vecPairs = std::ranges::to<std::vector<std::pair<uint16_t, size_t>>>(securityCount);
+    auto vecPairs = std::vector<std::pair<uint16_t, size_t>>();
+    std::ranges::transform(securityCount, std::back_inserter(vecPairs), std::identity{});
+    std::ranges::sort(vecPairs, [](auto const& lhs, auto const& rhs) { return lhs.second > rhs.second; });
+    return vecPairs;
+  }();
+  
   int constexpr static N = 10;
   std::cout << "Top " << N << ": " << std::endl;
   for (auto i : std::views::iota(0, N)) {
@@ -95,7 +102,7 @@ TEST(ItchReader, TopNStocksByAdd) {
     std::cout << std::setw(5) << id << " (" << stockMap[id] << ")" << ": " << c << std::endl;
   }
   ASSERT_EQ(count, maxCount);
-  
+
   ASSERT_EQ(stockMap[6449], "QQQ     "s);
   ASSERT_EQ(stockMap[7291], "SPY     "s);
   ASSERT_EQ(stockMap[331],  "AMD     "s);
@@ -107,7 +114,6 @@ TEST(ItchReader, TopNStocksByAdd) {
   ASSERT_EQ(topSecurityCount[2], (std::pair<uint16_t, size_t>(331, 375023)));
   ASSERT_EQ(topSecurityCount[3], (std::pair<uint16_t, size_t>(4260, 284912)));
   ASSERT_EQ(topSecurityCount[4], (std::pair<uint16_t, size_t>(14, 271383)));
-  
 }
 
 }  // namespace

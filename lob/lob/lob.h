@@ -10,6 +10,11 @@
 #include <set>
 #include <string_view>
 #include <vector>
+#include <boost/container/flat_map.hpp>
+
+template <class... Args>
+//using MapT = std::map<Args...>;
+using MapT = boost::container::flat_map<Args...>;
 
 namespace lob {
 
@@ -230,8 +235,8 @@ class LimitOrderBook {
 
  private:
   std::unordered_map<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
-  std::map<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
-  std::map<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
+  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
+  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
