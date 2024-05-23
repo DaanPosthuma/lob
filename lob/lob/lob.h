@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <boost/container/flat_map.hpp>
+#include <boost/unordered_map.hpp>
 #include <cassert>
 #include <functional>
 #include <iostream>
@@ -10,11 +12,16 @@
 #include <set>
 #include <string_view>
 #include <vector>
-#include <boost/container/flat_map.hpp>
 
+// todo: compare performance
 template <class... Args>
-//using MapT = std::map<Args...>;
+// using MapT = std::map<Args...>;
 using MapT = boost::container::flat_map<Args...>;
+
+// todo: compare performance
+template <class... Args>
+// using UnorderedMapT = std::unordered_map<Args...>;
+using UnorderedMapT = boost::unordered_map<Args...>;
 
 namespace lob {
 
@@ -35,11 +42,12 @@ class OrderId {
     return OrderId(id++);
   }
 
-  explicit operator int () const {
+  explicit operator int() const {
     return mId;
   }
 
   friend struct std::hash<lob::OrderId>;
+  friend struct boost::hash<lob::OrderId>;
 
  private:
   int mId;
@@ -84,6 +92,15 @@ struct hash<lob::OrderId> {
 };
 }  // namespace std
 
+namespace boost {
+template <>
+struct hash<lob::OrderId> {
+  size_t operator()(lob::OrderId const& orderId) const {
+    return boost::hash<size_t>{}(orderId.mId);
+  }
+};
+}  // namespace boost
+
 namespace lob {
 
 enum class Direction {
@@ -100,15 +117,15 @@ class LimitOrder {
   auto direction() const { return mDirection; }
   auto level() const { return mLevel; }
   auto orderId() const { return mOrderId; }
-  
+
   /*LimitOrder createSizeAmendedOrder(int newSize) const {
     return LimitOrder(newSize, mLevel, mOrderId);
   }*/
 
  private:
   int mSize;
-  Direction mDirection; // todo: remove
-  Level<Precision> mLevel; // todo: remove
+  Direction mDirection;     // todo: remove
+  Level<Precision> mLevel;  // todo: remove
   OrderId mOrderId;
 };
 
@@ -165,10 +182,21 @@ class LimitOrderBook {
       side[level].remove(orderIt);
       if (side[level].empty()) side.erase(level);
       mOrders.erase(it);
-    }
-    else {
+    } else {
       throw std::runtime_error("Order id not in order book");
     }
+  }
+
+  auto const& getOrder(OrderId orderId) const {
+    return mOrders[orderId];
+  }
+
+  auto hasBids() const {
+    return !mBid.empty();
+  }
+
+  auto hasAsks() const {
+    return !mAsk.empty();
   }
 
   auto bid() const {
@@ -234,7 +262,7 @@ class LimitOrderBook {
   }*/
 
  private:
-  std::unordered_map<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
+  UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
   MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
   MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
 

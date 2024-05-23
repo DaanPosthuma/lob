@@ -207,12 +207,13 @@ namespace md::itch::messages {
 
   template <>
   struct itch_message<MessageType::DELETE_ORDER> {
-    itch_message(oid_t __o, timestamp_t __t) : oid(__o), timestamp(__t) {}
+    itch_message(oid_t __o, timestamp_t __t, uint16_t __stock_locate) : oid(__o), timestamp(__t), stock_locate(__stock_locate) {}
     oid_t const oid;
     timestamp_t const timestamp;
+    uint16_t const stock_locate;
     static itch_message parse(char const *ptr)
     {
-      return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
+      return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5), read_locate(ptr + 1));
     }
   };
 

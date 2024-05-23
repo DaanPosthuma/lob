@@ -77,9 +77,9 @@ TEST(ItchReader, TopNStocksByAdd) {
 
   auto stockMap = std::vector<std::string>(std::numeric_limits<uint16_t>::max());
   auto securityCount = std::unordered_map<uint16_t, size_t>();
-  size_t startOfMessagesMsgId = 999999;
-  size_t startOfSystemHoursMsgId = 999999;
-  size_t startOfMarketHours = 999999;
+  size_t startOfMessagesMsgId;
+  size_t startOfSystemHoursMsgId;
+  size_t startOfMarketHours;
 
   for (size_t msgi=0; msgi != maxCount; ++msgi) {
     auto const currentMessageType = md::itch::currentMessageType(reader);

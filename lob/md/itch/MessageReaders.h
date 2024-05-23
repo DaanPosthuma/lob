@@ -21,7 +21,11 @@ inline md::itch::messages::itch_message<messageType> readItchMessage(md::BinaryD
 }
 
 inline auto currentMessageType(md::BinaryDataReader const& reader) {
-  return md::itch::types::MessageType(*reader.get(2));
+  return md::itch::types::MessageType(*reader.get(0+2));
+}
+
+inline auto currentMessageTimestamp(md::BinaryDataReader const& reader) {
+  return md::itch::messages::read_timestamp(reader.get(5+2));
 }
 
 inline void skipCurrentMessage(md::BinaryDataReader& reader) {
