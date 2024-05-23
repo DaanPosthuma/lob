@@ -18,7 +18,7 @@ auto getTestFile() {
   return md::MappedFile(filename);
 }
 
-auto HHMM(md::itch::types::timestamp_t timestamp) {
+auto HHMMSS(md::itch::types::timestamp_t timestamp) {
 
     auto const hours = std::chrono::duration_cast<std::chrono::hours>(timestamp);
     auto const minutes = std::chrono::duration_cast<std::chrono::minutes>(timestamp - hours);
@@ -86,7 +86,7 @@ TEST(ItchReader, TopNStocksByAdd) {
     switch (currentMessageType) {
       case md::itch::messages::MessageType::SYSEVENT: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::SYSEVENT>(reader);
-        std::cout << "message " << msgi << " - SYSEVENT: " << HHMM(msg.timeStamp) << ", " << msg.eventCode << std::endl;
+        std::cout << "message " << msgi << " - SYSEVENT: " << HHMMSS(msg.timeStamp) << ", " << msg.eventCode << std::endl;
         if (msg.eventCode == 'O') startOfMessagesMsgId = msgi;
         else if (msg.eventCode == 'S') startOfSystemHoursMsgId = msgi;
         else if (msg.eventCode == 'Q') startOfMarketHours = msgi;

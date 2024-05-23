@@ -173,6 +173,10 @@ class LimitOrderBook {
     return orderId;
   }
 
+  bool hasOrder(const OrderId orderId) const {
+    return mOrders.contains(orderId);
+  }
+
   void deleteOrder(const OrderId orderId) {
     if (auto it = mOrders.find(orderId); it != mOrders.end()) {
       auto const orderIt = it->second;
@@ -185,10 +189,6 @@ class LimitOrderBook {
     } else {
       throw std::runtime_error("Order id not in order book");
     }
-  }
-
-  auto const& getOrder(OrderId orderId) const {
-    return mOrders[orderId];
   }
 
   auto hasBids() const {

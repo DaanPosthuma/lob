@@ -219,17 +219,18 @@ namespace md::itch::messages {
 
   template <>
   struct itch_message<MessageType::REPLACE_ORDER> {
-    itch_message(oid_t __old_oid, oid_t __new_oid, qty_t __q, price_t __p)
-        : oid(__old_oid), new_order_id(__new_oid), new_qty(__q), new_price(__p)
+    itch_message(timestamp_t timestamp, oid_t __old_oid, oid_t __new_oid, qty_t __q, price_t __p)
+        : timestamp(timestamp), oid(__old_oid), new_order_id(__new_oid), new_qty(__q), new_price(__p)
     {
     }
+    timestamp_t timestamp;
     oid_t const oid;
     oid_t const new_order_id;
     qty_t const new_qty;
     price_t const new_price;
     static itch_message parse(char const *ptr)
     {
-      return itch_message(read_oid(ptr + 11), read_oid(ptr + 19),
+      return itch_message(read_timestamp(ptr + 5), read_oid(ptr + 11), read_oid(ptr + 19),
                           read_qty(ptr + 27), read_price(ptr + 31));
     }
   };
