@@ -52,10 +52,8 @@ auto getStockLocateMap(md::BinaryDataReader& reader) {
 template <class ToT, class FromT>
 void assertCanCastTo(FromT from) {
   if constexpr (!std::is_same<FromT, ToT>::value) {
-    if(from > std::numeric_limits<ToT>::max()) 
+    if (from > std::numeric_limits<ToT>::max())
       throw std::runtime_error(std::string("Cannot cast ") + std::to_string(from) + " from " + typeid(FromT).name() + " to " + typeid(ToT).name());
-    //if(from < std::numeric_limits<ToT>::min()) 
-    //  throw std::runtime_error(std::string("Cannot cast ") + std::to_string(from) + " from " + typeid(FromT).name() + " to " + typeid(ToT).name());
   }
 }
 
@@ -79,29 +77,28 @@ auto toLobType(md::itch::types::qty_t qty) {
 }
 
 auto toString(md::itch::types::timestamp_t timestamp) {
+  auto const hours = std::chrono::duration_cast<std::chrono::hours>(timestamp);
+  auto const minutes = std::chrono::duration_cast<std::chrono::minutes>(timestamp - hours);
+  auto const seconds = std::chrono::duration_cast<std::chrono::seconds>(timestamp - hours - minutes);
+  auto const millis = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp - hours - minutes - seconds);
+  auto const micros = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - hours - minutes - seconds - millis);
+  auto const nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp - hours - minutes - seconds - millis - micros);
 
-    auto const hours = std::chrono::duration_cast<std::chrono::hours>(timestamp);
-    auto const minutes = std::chrono::duration_cast<std::chrono::minutes>(timestamp - hours);
-    auto const seconds = std::chrono::duration_cast<std::chrono::seconds>(timestamp - hours - minutes);
-    auto const millis = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp - hours - minutes - seconds);
-    auto const micros = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - hours - minutes - seconds - millis);
-    auto const nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp - hours - minutes - seconds - millis - micros);
+  std::ostringstream oss;
+  oss << std::setw(2) << std::setfill('0') << hours.count() << ":"
+      << std::setw(2) << std::setfill('0') << minutes.count() << ":"
+      << std::setw(2) << std::setfill('0') << seconds.count() << "."
+      << std::setw(3) << std::setfill('0') << millis.count() << "."
+      << std::setw(3) << std::setfill('0') << micros.count() << "."
+      << std::setw(3) << std::setfill('0') << nanos.count();
 
-    std::ostringstream oss;
-    oss << std::setw(2) << std::setfill('0') << hours.count() << ":"
-        << std::setw(2) << std::setfill('0') << minutes.count() << ":"
-        << std::setw(2) << std::setfill('0') << seconds.count() << "."
-        << std::setw(3) << std::setfill('0') << millis.count() << "."
-        << std::setw(3) << std::setfill('0') << micros.count() << "."
-        << std::setw(3) << std::setfill('0') << nanos.count();
-
-    return oss.str();
+  return oss.str();
 }
 
 }  // namespace
 
-int main() try {
-
+template <class LobT>
+void f() try {
   std::cout << "Loading test file..." << std::endl;
 
   auto const file = getTestFile();
@@ -112,7 +109,7 @@ int main() try {
 
   auto timings = std::array<std::pair<size_t, std::chrono::nanoseconds>, 256>{};
 
-  boost::unordered_map<int, lob::LimitOrderBook<4>> books;
+  boost::unordered_map<int, LobT> books;
 
   for (size_t msgi = 0; msgi != maxCount; ++msgi) {
     if (reader.remaining() < 3) {
@@ -125,43 +122,41 @@ int main() try {
       case md::itch::messages::MessageType::ADD_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER>(reader);
         books[msg.stock_locate].addOrder(toLobType(msg.oid), toLobType(msg.buy), toLobType(msg.qty), toLobType(msg.price));
-        //std::cout << toString(msg.timestamp) << " Added order " << (int)msg.oid << " to book " << msg.stock_locate << std::endl;
+        // std::cout << toString(msg.timestamp) << " Added order " << (int)msg.oid << " to book " << msg.stock_locate << std::endl;
         break;
       }
       case md::itch::messages::MessageType::ADD_ORDER_MPID: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER_MPID>(reader);
         books[msg.add_msg.stock_locate].addOrder(toLobType(msg.add_msg.oid), toLobType(msg.add_msg.buy), toLobType(msg.add_msg.qty), toLobType(msg.add_msg.price));
-        //std::cout << toString(msg.add_msg.timestamp) << " Added (MPID) order " << (int)msg.add_msg.oid << " to book " << msg.add_msg.stock_locate << std::endl;
+        // std::cout << toString(msg.add_msg.timestamp) << " Added (MPID) order " << (int)msg.add_msg.oid << " to book " << msg.add_msg.stock_locate << std::endl;
         break;
       }
       case md::itch::messages::MessageType::REPLACE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REPLACE_ORDER>(reader);
-        //std::cout << toString(msg.timestamp) << " Todo: replace order " << (int)msg.oid << " with " << (int)msg.new_order_id << std::endl;
+        // std::cout << toString(msg.timestamp) << " Todo: replace order " << (int)msg.oid << " with " << (int)msg.new_order_id << std::endl;
         break;
       }
       case md::itch::messages::MessageType::REDUCE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REDUCE_ORDER>(reader);
-        //std::cout << toString(msg.timestamp) << " Todo: reduce order " << (int)msg.oid << std::endl;
+        // std::cout << toString(msg.timestamp) << " Todo: reduce order " << (int)msg.oid << std::endl;
         break;
       }
       case md::itch::messages::MessageType::EXECUTE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::EXECUTE_ORDER>(reader);
-        //std::cout << toString(msg.timestamp) << " Todo: execute order " << (int)msg.oid << std::endl;
+        // std::cout << toString(msg.timestamp) << " Todo: execute order " << (int)msg.oid << std::endl;
         break;
       }
       case md::itch::messages::MessageType::EXECUTE_ORDER_WITH_PRICE: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::EXECUTE_ORDER_WITH_PRICE>(reader);
-        //std::cout << toString(msg.exec.timestamp) << " Todo: execute order " << (int)msg.exec.oid << " with price " << std::endl;
+        // std::cout << toString(msg.exec.timestamp) << " Todo: execute order " << (int)msg.exec.oid << " with price " << std::endl;
         break;
       }
       case md::itch::messages::MessageType::DELETE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::DELETE_ORDER>(reader);
         auto const orderId = toLobType(msg.oid);
-        if (books[msg.stock_locate].hasOrder(orderId)) {
-          books[msg.stock_locate].deleteOrder(orderId);
+        if (books[msg.stock_locate].deleteOrder(orderId)) {
           //std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
-        }
-        else {
+        } else {
           //std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
         }
 
@@ -185,7 +180,7 @@ int main() try {
 
   /*for (auto const& [symbolId, book] : books) {
     std::cout << symbolId << " (" << stockLocateMap[symbolId] << ")" << std::endl;
-    
+
     if (book.hasBids()) {
       std::cout << "Bid: " << book.bid() << " (" << book.bidDepth() << ")" << std::endl;
     } else {
@@ -198,11 +193,15 @@ int main() try {
       std::cout << "No asks" << std::endl;
     }
   }*/
-} 
-catch(std::exception const& ex) {
+} catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
-}
-catch(...) {
+} catch (...) {
   std::cout << "Unknown exception" << std::endl;
 }
 
+int main() {
+  f<lob::LimitOrderBook<4>>();
+  f<lob::LimitOrderBook<4>>();
+  f<lob::LimitOrderBookWithLocks<4>>();
+  f<lob::LimitOrderBookWithLocks<4>>();
+}

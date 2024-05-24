@@ -10,18 +10,17 @@
 #include <map>
 #include <ranges>
 #include <set>
+#include <shared_mutex>
 #include <string_view>
 #include <vector>
 
-// todo: compare performance
 template <class... Args>
-// using MapT = std::map<Args...>;
-using MapT = boost::container::flat_map<Args...>;
+using MapT = std::map<Args...>;
+// using MapT = boost::container::flat_map<Args...>;
 
-// todo: compare performance
 template <class... Args>
-// using UnorderedMapT = std::unordered_map<Args...>;
 using UnorderedMapT = boost::unordered_map<Args...>;
+// using UnorderedMapT = std::unordered_map<Args...>;
 
 namespace lob {
 
@@ -173,22 +172,19 @@ class LimitOrderBook {
     return orderId;
   }
 
-  bool hasOrder(const OrderId orderId) const {
-    return mOrders.contains(orderId);
-  }
+  bool deleteOrder(const OrderId orderId) {
+    
+    auto const it = mOrders.find(orderId);
+    if (it == mOrders.end()) return false;
 
-  void deleteOrder(const OrderId orderId) {
-    if (auto it = mOrders.find(orderId); it != mOrders.end()) {
-      auto const orderIt = it->second;
-      auto const level = orderIt->level();
-      auto const direction = orderIt->direction();
-      auto& side = direction == Direction::Sell ? mAsk : mBid;
-      side[level].remove(orderIt);
-      if (side[level].empty()) side.erase(level);
-      mOrders.erase(it);
-    } else {
-      throw std::runtime_error("Order id not in order book");
-    }
+    auto const orderIt = it->second;
+    auto const level = orderIt->level();
+    auto& side = orderIt->direction() == Direction::Sell ? mAsk : mBid;
+    side[level].remove(orderIt);
+    if (side[level].empty()) side.erase(level);
+    mOrders.erase(it);
+
+    return true;
   }
 
   auto hasBids() const {
@@ -283,6 +279,57 @@ class LimitOrderBook {
     ostr << "[ LimitOrderBook end ]" << std::endl;
     return ostr;
   }
+};
+
+template <int Precision>
+class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
+ public:
+  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const Level<Precision> level) {
+    std::unique_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::addOrder(orderId, direction, size, level);
+  }
+
+  bool deleteOrder(const OrderId orderId) {
+    std::unique_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::deleteOrder(orderId);
+  }
+
+  auto hasBids() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::hadBids();
+  }
+
+  auto hasAsks() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::hadAsks();
+  }
+
+  auto bid() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::bid();
+  }
+
+  auto ask() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::ask();
+  }
+
+  int bidDepth() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::bidDepth();
+  }
+
+  int askDepth() const {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::askdDepth();
+  }
+
+  inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBookWithLocks const& book) {
+    return ostr << static_cast<LimitOrderBook<Precision>>(book);
+  }
+
+ private:
+  mutable std::shared_mutex mMutex;
 };
 
 }  // namespace lob
