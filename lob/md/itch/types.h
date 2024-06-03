@@ -43,34 +43,38 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace md::itch::types {
 
-  enum class MessageType {
-    SYSEVENT = 'S',
-    STOCK_DIRECTORY = 'R',
-    TRADING_ACTION = 'H',
-    REG_SHO_RESTRICT = 'Y',  // 20
-    MPID_POSITION = 'L',     // 26
-    MWCB_DECLINE = 'V',      // market wide circuit breaker // 35
-    MWCB_STATUS = 'W',
-    IPO_QUOTE_UPDATE = 'K',  // 28
-    ADD_ORDER = 'A',         // 36
-    ADD_ORDER_MPID = 'F',
-    EXECUTE_ORDER = 'E',
-    EXECUTE_ORDER_WITH_PRICE = 'C',
-    REDUCE_ORDER = 'X',
-    DELETE_ORDER = 'D',
-    REPLACE_ORDER = 'U',
-    TRADE = 'P',
-    CROSS_TRADE = 'Q',
-    BROKEN_TRADE = 'B',
-    NET_ORDER_IMBALANCE = 'I',
-    RETAIL_PRICE_IMPROVEMENT = 'N',
-    PROCESS_LULD_AUCTION_COLLAR_MESSAGE = 'J'
-  };
+enum class MessageType {
+  SYSEVENT = 'S',
+  STOCK_DIRECTORY = 'R',
+  TRADING_ACTION = 'H',
+  REG_SHO_RESTRICT = 'Y',  // 20
+  MPID_POSITION = 'L',     // 26
+  MWCB_DECLINE = 'V',      // market wide circuit breaker // 35
+  MWCB_STATUS = 'W',
+  IPO_QUOTE_UPDATE = 'K',  // 28
+  ADD_ORDER = 'A',         // 36
+  ADD_ORDER_MPID = 'F',
+  EXECUTE_ORDER = 'E',
+  EXECUTE_ORDER_WITH_PRICE = 'C',
+  REDUCE_ORDER = 'X',
+  DELETE_ORDER = 'D',
+  REPLACE_ORDER = 'U',
+  TRADE = 'P',
+  CROSS_TRADE = 'Q',
+  BROKEN_TRADE = 'B',
+  NET_ORDER_IMBALANCE = 'I',
+  RETAIL_PRICE_IMPROVEMENT = 'N',
+  PROCESS_LULD_AUCTION_COLLAR_MESSAGE = 'J'
+};
 
-  enum class BUY_SELL : char { BUY = 'B', SELL = 'S' };
-  using timestamp_t = std::chrono::nanoseconds;
-  enum class oid_t : uint64_t {};
-  enum class price_t : uint32_t {};
-  enum class qty_t : uint32_t {};
+enum class BUY_SELL : char { BUY = 'B',
+                             SELL = 'S' };
+struct timestamp_t : std::chrono::nanoseconds {
+  explicit timestamp_t(std::chrono::nanoseconds ns) : std::chrono::nanoseconds{ns} {};
+  explicit timestamp_t(uint64_t ns) : std::chrono::nanoseconds{ns} {};
+};
+enum class oid_t : uint64_t {};
+enum class price_t : uint32_t {};
+enum class qty_t : uint32_t {};
 
-} // namespace md::itch::types
+}  // namespace md::itch::types

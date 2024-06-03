@@ -173,7 +173,6 @@ class LimitOrderBook {
   }
 
   bool deleteOrder(const OrderId orderId) {
-    
     auto const it = mOrders.find(orderId);
     if (it == mOrders.end()) return false;
 
@@ -187,27 +186,27 @@ class LimitOrderBook {
     return true;
   }
 
-  auto hasBids() const {
+  [[nodiscard]] auto hasBids() const noexcept {
     return !mBid.empty();
   }
 
-  auto hasAsks() const {
+  [[nodiscard]] auto hasAsks() const noexcept {
     return !mAsk.empty();
   }
 
-  auto bid() const {
+  [[nodiscard]] auto bid() const noexcept {
     return mBid.rbegin()->first;
   }
 
-  auto ask() const {
+  [[nodiscard]] auto ask() const noexcept {
     return mAsk.rbegin()->first;
   }
 
-  int bidDepth() const {
+  [[nodiscard]] int bidDepth() const noexcept {
     return mBid.rbegin()->second.depth();
   }
 
-  int askDepth() const {
+  [[nodiscard]] int askDepth() const noexcept {
     return mAsk.rbegin()->second.depth();
   }
 
@@ -294,34 +293,34 @@ class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
     return LimitOrderBook<Precision>::deleteOrder(orderId);
   }
 
-  auto hasBids() const {
+  [[nodiscard]] auto hasBids() const noexcept {
     std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::hadBids();
+    return LimitOrderBook<Precision>::hasBids();
   }
 
-  auto hasAsks() const {
+  [[nodiscard]] auto hasAsks() const noexcept {
     std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::hadAsks();
+    return LimitOrderBook<Precision>::hasAsks();
   }
 
-  auto bid() const {
+  [[nodiscard]] auto bid() const noexcept {
     std::shared_lock const lock(mMutex);
     return LimitOrderBook<Precision>::bid();
   }
 
-  auto ask() const {
+  [[nodiscard]] auto ask() const noexcept {
     std::shared_lock const lock(mMutex);
     return LimitOrderBook<Precision>::ask();
   }
 
-  int bidDepth() const {
+  [[nodiscard]] int bidDepth() const noexcept {
     std::shared_lock const lock(mMutex);
     return LimitOrderBook<Precision>::bidDepth();
   }
 
-  int askDepth() const {
+  [[nodiscard]] int askDepth() const noexcept {
     std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::askdDepth();
+    return LimitOrderBook<Precision>::askDepth();
   }
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBookWithLocks const& book) {
