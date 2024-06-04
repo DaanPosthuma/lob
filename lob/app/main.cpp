@@ -49,8 +49,6 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
       case md::itch::messages::MessageType::ADD_ORDER_MPID: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER_MPID>(reader);
         addOrder(msg.add_msg.timestamp, msg.add_msg.stock_locate, msg.add_msg.oid, msg.add_msg.buy, msg.add_msg.qty, msg.add_msg.price);
-        // books[msg.add_msg.stock_locate].addOrder(toLobType(msg.add_msg.oid), toLobType(msg.add_msg.buy), toLobType(msg.add_msg.qty), toLobType(msg.add_msg.price));
-        //  std::cout << toString(msg.add_msg.timestamp) << " Added (MPID) order " << (int)msg.add_msg.oid << " to book " << msg.add_msg.stock_locate << std::endl;
         break;
       }
       case md::itch::messages::MessageType::REPLACE_ORDER: {
@@ -106,6 +104,12 @@ void f() try {
   std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
 
   boost::unordered_map<int, LobT> books;
+  
+  auto strategy = [&] {
+    auto const id = symbols.byName("QQQ");
+    auto& book = books[id];
+    return strategies::TrivialStrategy(book);
+  }();
 
   auto addOrder = [&books](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
     books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
