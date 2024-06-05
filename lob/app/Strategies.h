@@ -4,31 +4,22 @@
 
 namespace strategies {
 
-template <class T>
-concept Strategy = requires(T a) {
-  { a.onUpdate() };
-};
-
 template <class BookT>
 class TrivialStrategy {
  public:
   TrivialStrategy(BookT& book) : mBook(book) {}
 
-  void onUpdate() noexcept {
-    if (mCount++ % 10000 == 0) {
-      if (!mBook.hasBids() || !mBook.hasAsks()) return;
-
-      std::cout << mBook.bid() << " (" << mBook.bidDepth() << ") " << mBook.ask() << " (" << mBook.askDepth() << ")" << std::endl;
+  void onUpdate(auto timestamp) noexcept {
+    auto const top = mBook.top();
+    if (top != mPreviousTop) {
+      std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
+      mPreviousTop = top;
     }
   }
 
  private:
   BookT& mBook;
-  int mCount = 0;
+  BookT::TopOfBook mPreviousTop;
 };
-
-/*template <class BookT>
-void RunSingleStockStrategyLoop(Strategy, BookT& book) {
-}*/
 
 }  // namespace strategies

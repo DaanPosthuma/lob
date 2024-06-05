@@ -14,8 +14,6 @@
 #include "Simulator.h"
 #include "Strategies.h"
 
-static_assert(strategies::Strategy<strategies::TrivialStrategy<lob::LimitOrderBook<4>>>);
-
 namespace {
 
 using namespace std::string_literals;
@@ -117,21 +115,21 @@ int main() try {
     return strategies::TrivialStrategy(book);
   }();
 
-  auto onUpdate = [&strategy]() {
-    strategy.onUpdate();
+  auto onUpdate = [&strategy](auto timestamp) {
+    strategy.onUpdate(timestamp);
   };
 
   auto addOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
     books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
     // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
-    onUpdate();
+    onUpdate(timestamp);
   };
 
   auto deleteOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid) {
     auto const orderId = toLobType(oid);
     if (books[stock_locate].deleteOrder(orderId)) {
       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
-      onUpdate();
+      onUpdate(timestamp);
     } else {
       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
     }

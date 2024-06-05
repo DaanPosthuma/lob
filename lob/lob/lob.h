@@ -76,6 +76,8 @@ class Level {
     return ostr;
   }
 
+  inline friend auto operator<=>(Level<Precision> const& lhs, Level<Precision> const& rhs) = default;
+
  private:
   int mLevel;
 };
@@ -210,6 +212,28 @@ class LimitOrderBook {
     return mAsk.rbegin()->second.depth();
   }
 
+  struct TopOfBook {
+    Level<Precision> bid = 0;
+    int bidDepth = 0;
+    Level<Precision> ask = 0;
+    int askDepth = 0;
+
+    inline friend auto operator<=>(TopOfBook lhs, TopOfBook rhs) = default;
+  };
+
+  [[nodiscard]] auto top() const noexcept {
+    TopOfBook ret = {};
+    if (hasBids()) {
+      ret.bid = bid();
+      ret.bidDepth = bidDepth();
+    }
+    if (hasAsks()) {
+      ret.ask = ask();
+      ret.askDepth = askDepth();
+    }
+    return ret;
+  }
+
   /*void PlaceMarketOrder(const Direction direction, const int size)
   {
     //std::print("MO (direction={}, size={})", direction, size);
@@ -321,6 +345,11 @@ class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
   [[nodiscard]] int askDepth() const noexcept {
     std::shared_lock const lock(mMutex);
     return LimitOrderBook<Precision>::askDepth();
+  }
+
+  [[nodiscard]] auto top() const noexcept {
+    std::shared_lock const lock(mMutex);
+    return LimitOrderBook<Precision>::top();
   }
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBookWithLocks const& book) {
