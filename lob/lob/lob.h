@@ -106,21 +106,18 @@ enum class Direction {
 template <int Precision>
 class LimitOrder {
  public:
-  constexpr LimitOrder(int size, Direction direction, Level<Precision> level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
+  using LevelT = Level<Precision>;
+  constexpr LimitOrder(int size, Direction direction, LevelT level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
 
   constexpr auto size() const noexcept { return mSize; }
   constexpr auto direction() const noexcept { return mDirection; }
   constexpr auto level() const noexcept { return mLevel; }
   constexpr auto orderId() const noexcept { return mOrderId; }
 
-  /*LimitOrder createSizeAmendedOrder(int newSize) const {
-    return LimitOrder(newSize, mLevel, mOrderId);
-  }*/
-
  private:
   int mSize;
-  Direction mDirection;     // todo: remove
-  Level<Precision> mLevel;  // todo: remove
+  Direction mDirection;
+  LevelT mLevel;
   OrderId mOrderId;
 };
 
@@ -155,13 +152,18 @@ class LevelOrders {
 template <int Precision>
 class LimitOrderBook {
  public:
-  LimitOrderBook() : mBid([](auto lhs, auto rhs) { return lhs < rhs; }), mAsk([](auto lhs, auto rhs) { return lhs > rhs; }) {}
+  static constexpr int Precision = Precision;
+  using LevelT = Level<Precision>;
 
-  OrderId addOrder(const Direction direction, const int size, const Level<Precision> level) {
+  LimitOrderBook()
+      : mBid([](auto lhs, auto rhs) { return lhs < rhs; }),
+        mAsk([](auto lhs, auto rhs) { return lhs > rhs; }) {}
+
+  OrderId addOrder(const Direction direction, const int size, const LevelT level) {
     return addOrder(OrderId::Generate(), direction, size, level);
   }
 
-  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const Level<Precision> level) {
+  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const LevelT level) {
     // todo(?): check if we can (partially) trade
     auto it = (direction == Direction::Sell ? mAsk : mBid)[level].add(size, direction, level, orderId);
     mOrders.emplace(orderId, it);
@@ -207,9 +209,9 @@ class LimitOrderBook {
   }
 
   struct TopOfBook {
-    Level<Precision> bid{0};
+    LevelT bid{0};
     int bidDepth = 0;
-    Level<Precision> ask{0};
+    LevelT ask{0};
     int askDepth = 0;
 
     inline friend auto constexpr operator<=>(TopOfBook lhs, TopOfBook rhs) noexcept = default;
@@ -276,8 +278,8 @@ class LimitOrderBook {
 
  private:
   UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
-  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
-  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
+  MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mBid;
+  MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mAsk;
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) noexcept {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
@@ -301,7 +303,8 @@ class LimitOrderBook {
 template <int Precision>
 class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
  public:
-  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const Level<Precision> level) {
+  using LevelT = LimitOrderBook<Precision>::LevelT;
+  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const LevelT level) {
     std::unique_lock const lock(mMutex);
     return LimitOrderBook<Precision>::addOrder(orderId, direction, size, level);
   }

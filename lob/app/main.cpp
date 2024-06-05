@@ -120,14 +120,13 @@ int main() try {
   };
 
   auto addOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
-    books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
+    books[stock_locate].addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
     // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
     onUpdate(timestamp);
   };
 
   auto deleteOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid) {
-    auto const orderId = toLobType(oid);
-    if (books[stock_locate].deleteOrder(orderId)) {
+    if (books[stock_locate].deleteOrder(toOrderId(oid))) {
       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
       onUpdate(timestamp);
     } else {
