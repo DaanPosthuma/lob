@@ -32,9 +32,7 @@ class OrderId {
     return ostr;
   }
 
-  inline friend auto operator==(OrderId const& lhs, OrderId const& rhs) {
-    return lhs.mId == rhs.mId;
-  }
+  inline friend auto constexpr operator <=> (OrderId const& lhs, OrderId const& rhs) = default;
 
   static OrderId Generate() {
     static int id = 9000000;
@@ -76,7 +74,7 @@ class Level {
     return ostr;
   }
 
-  inline friend auto operator<=>(Level<Precision> const& lhs, Level<Precision> const& rhs) = default;
+  inline friend auto constexpr operator<=>(Level<Precision> lhs, Level<Precision> rhs) = default;
 
  private:
   int mLevel;
@@ -218,7 +216,7 @@ class LimitOrderBook {
     Level<Precision> ask = 0;
     int askDepth = 0;
 
-    inline friend auto operator<=>(TopOfBook lhs, TopOfBook rhs) = default;
+    inline friend auto constexpr operator<=>(TopOfBook lhs, TopOfBook rhs) = default;
   };
 
   [[nodiscard]] auto top() const noexcept {
