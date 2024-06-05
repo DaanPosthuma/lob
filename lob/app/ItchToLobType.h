@@ -26,7 +26,7 @@ inline auto toLobType(md::itch::types::BUY_SELL bs) {
 
 inline auto toLobType(md::itch::types::price_t price) {
   assertCanCastTo<int>(std::to_underlying(price));
-  return static_cast<int>(price);
+  return lob::Level<4>(static_cast<int>(price));
 }
 
 inline auto toLobType(md::itch::types::qty_t qty) {

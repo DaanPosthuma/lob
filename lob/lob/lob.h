@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <boost/container/flat_map.hpp>
 #include <boost/unordered_map.hpp>
 #include <cassert>
 #include <functional>
@@ -9,10 +8,7 @@
 #include <list>
 #include <map>
 #include <ranges>
-#include <set>
 #include <shared_mutex>
-#include <string_view>
-#include <vector>
 
 template <class... Args>
 using MapT = std::map<Args...>;
@@ -26,13 +22,13 @@ namespace lob {
 
 class OrderId {
  public:
-  explicit OrderId(int id) : mId(id) {}
+  explicit constexpr OrderId(int id) : mId(id) {}
   inline friend std::ostream& operator<<(std::ostream& ostr, OrderId const& order) {
     ostr << order.mId;
     return ostr;
   }
 
-  inline friend auto constexpr operator <=> (OrderId const& lhs, OrderId const& rhs) = default;
+  inline friend auto constexpr operator<=>(OrderId const& lhs, OrderId const& rhs) noexcept = default;
 
   static OrderId Generate() {
     static int id = 9000000;
@@ -61,20 +57,20 @@ struct PrecisionMultiplier<4> {
 template <int Precision>
 class Level {
  public:
-  Level(int level) : mLevel(level) {}
-  operator int() const {
+  explicit constexpr Level(int level) : mLevel(level) {}
+  explicit constexpr operator int() const noexcept {
     return mLevel;
   }
-  operator double() const {
+  explicit constexpr operator double() const noexcept {
     return mLevel * PrecisionMultiplier<Precision>::value;
   }
 
-  inline friend std::ostream& operator<<(std::ostream& ostr, Level const& level) {
+  inline friend std::ostream& operator<<(std::ostream& ostr, Level const& level) noexcept {
     ostr << static_cast<double>(level);
     return ostr;
   }
 
-  inline friend auto constexpr operator<=>(Level<Precision> lhs, Level<Precision> rhs) = default;
+  inline friend auto constexpr operator<=>(Level<Precision> lhs, Level<Precision> rhs) noexcept = default;
 
  private:
   int mLevel;
@@ -110,12 +106,12 @@ enum class Direction {
 template <int Precision>
 class LimitOrder {
  public:
-  LimitOrder(int size, Direction direction, Level<Precision> level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
+  constexpr LimitOrder(int size, Direction direction, Level<Precision> level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
 
-  auto size() const { return mSize; }
-  auto direction() const { return mDirection; }
-  auto level() const { return mLevel; }
-  auto orderId() const { return mOrderId; }
+  constexpr auto size() const noexcept { return mSize; }
+  constexpr auto direction() const noexcept { return mDirection; }
+  constexpr auto level() const noexcept { return mLevel; }
+  constexpr auto orderId() const noexcept { return mOrderId; }
 
   /*LimitOrder createSizeAmendedOrder(int newSize) const {
     return LimitOrder(newSize, mLevel, mOrderId);
@@ -139,7 +135,7 @@ class LevelOrders {
     mDepth -= it->size();
     mOrders.erase(it);
   }
-  auto empty() const { return mOrders.empty(); }
+  [[nodiscard]] auto empty() const noexcept { return mOrders.empty(); }
   auto& oldest() {
     return *mOrders.rbegin();
   }
@@ -148,8 +144,8 @@ class LevelOrders {
     mOrders.pop_back();
   }
 
-  int depth() const { return mDepth; }
-  auto num() const { return mOrders.size(); }
+  [[nodiscard]] int depth() const noexcept { return mDepth; }
+  [[nodiscard]] auto num() const noexcept { return mOrders.size(); }
 
  private:
   std::list<LimitOrder<Precision>> mOrders;
@@ -159,7 +155,7 @@ class LevelOrders {
 template <int Precision>
 class LimitOrderBook {
  public:
-  LimitOrderBook() : mBid([](int lhs, int rhs) { return lhs < rhs; }), mAsk([](int lhs, int rhs) { return lhs > rhs; }) {}
+  LimitOrderBook() : mBid([](auto lhs, auto rhs) { return lhs < rhs; }), mAsk([](auto lhs, auto rhs) { return lhs > rhs; }) {}
 
   OrderId addOrder(const Direction direction, const int size, const Level<Precision> level) {
     return addOrder(OrderId::Generate(), direction, size, level);
@@ -211,12 +207,12 @@ class LimitOrderBook {
   }
 
   struct TopOfBook {
-    Level<Precision> bid = 0;
+    Level<Precision> bid{0};
     int bidDepth = 0;
-    Level<Precision> ask = 0;
+    Level<Precision> ask{0};
     int askDepth = 0;
 
-    inline friend auto constexpr operator<=>(TopOfBook lhs, TopOfBook rhs) = default;
+    inline friend auto constexpr operator<=>(TopOfBook lhs, TopOfBook rhs) noexcept = default;
   };
 
   [[nodiscard]] auto top() const noexcept {
@@ -283,7 +279,7 @@ class LimitOrderBook {
   MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
   MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
 
-  inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) {
+  inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) noexcept {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
     ostr << "Orders: ";
     std::ranges::for_each(book.mOrders | std::views::keys, [first = true](auto orderId) mutable { std::cout << (first ? "" : ",") << orderId; first = false; });

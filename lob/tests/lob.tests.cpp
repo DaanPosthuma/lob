@@ -2,28 +2,34 @@
 #include <lob/RingBuffer.h>
 #include <lob/lob.h>
 
-using namespace std::string_literals;
-
 namespace {
+  
+static_assert(lob::OrderId{12345} == lob::OrderId{12345});
+static_assert(lob::OrderId{10} < lob::OrderId{50});
+
+static_assert(lob::Level<4>{10000} == lob::Level<4>{10000});
+static_assert(lob::Level<4>{500} < lob::Level<4>{10000});
 
 TEST(LOB, AddAndDelete) {
-  auto book = lob::LimitOrderBook<4>();
+  auto static constexpr Precision = 4;
+  auto book = lob::LimitOrderBook<Precision>();
+  using Level = lob::Level<Precision>;
 
-  book.addOrder(lob::Direction::Sell, 100, 231400);
-  book.addOrder(lob::Direction::Sell, 100, 231400);
-  book.addOrder(lob::Direction::Sell, 50, 231300);
-  book.addOrder(lob::Direction::Sell, 100, 231300);
-  book.addOrder(lob::Direction::Sell, 100, 231200);
-  book.addOrder(lob::Direction::Sell, 50, 231200);
-  book.addOrder(lob::Direction::Sell, 100, 231200);
+  book.addOrder(lob::Direction::Sell, 100, Level(231400));
+  book.addOrder(lob::Direction::Sell, 100, Level(231400));
+  book.addOrder(lob::Direction::Sell, 50, Level(231300));
+  book.addOrder(lob::Direction::Sell, 100, Level(231300));
+  book.addOrder(lob::Direction::Sell, 100, Level(231200));
+  book.addOrder(lob::Direction::Sell, 50, Level(231200));
+  book.addOrder(lob::Direction::Sell, 100, Level(231200));
 
-  auto const id0 = book.addOrder(lob::Direction::Buy, 100, 230900);
-  auto const id1 = book.addOrder(lob::Direction::Buy, 100, 230900);
-  book.addOrder(lob::Direction::Buy, 50, 230800);
-  book.addOrder(lob::Direction::Buy, 100, 230800);
-  book.addOrder(lob::Direction::Buy, 50, 230800);
-  book.addOrder(lob::Direction::Buy, 100, 230700);
-  book.addOrder(lob::Direction::Buy, 100, 230700);
+  auto const id0 = book.addOrder(lob::Direction::Buy, 100, Level(230900));
+  auto const id1 = book.addOrder(lob::Direction::Buy, 100, Level(230900));
+  book.addOrder(lob::Direction::Buy, 50, Level(230800));
+  book.addOrder(lob::Direction::Buy, 100, Level(230800));
+  book.addOrder(lob::Direction::Buy, 50, Level(230800));
+  book.addOrder(lob::Direction::Buy, 100, Level(230700));
+  book.addOrder(lob::Direction::Buy, 100, Level(230700));
 
   ASSERT_EQ(static_cast<int>(book.bid()), 230900);
   ASSERT_EQ(static_cast<int>(book.ask()), 231200);
