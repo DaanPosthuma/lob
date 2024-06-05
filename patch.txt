@@ -1,0 +1,157 @@
+diff --git a/lob/app/Strategies.h b/lob/app/Strategies.h
+index 1f89032..bcfe799 100644
+--- a/lob/app/Strategies.h
++++ b/lob/app/Strategies.h
+@@ -16,9 +16,10 @@ class TrivialStrategy {
+                 
+   void onUpdate() noexcept {
+     if (mCount++ % 10000 == 0) {
+-      if (!mBook.hasBids() || !mBook.hasAsks()) return;
++      //if (!mBook.hasBids() || !mBook.hasAsks()) return;
++      auto const ba = mBook.top();       
+                             
+-      std::cout << mBook.bid() << " (" << mBook.bidDepth() << ") " << mBook.ask() << " (" << mBook.askDepth() << ")" << std::endl;
++      std::cout << ba.bid << " (" << ba.bidDepth << ") " << ba.ask << " (" << ba.askDepth << ")" << std::endl;
+     }                                     
+   }                                      
+    
+diff --git a/lob/app/main.cpp b/lob/app/main.cpp
+index 5112c5a..ac4278d 100644
+--- a/lob/app/main.cpp        
++++ b/lob/app/main.cpp
+@@ -30,7 +30,8 @@ auto getTestFile() {
+   return md::MappedFile(filename);
+ }   
+ 
+-auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, auto const& onUpdate, int maxCount) {
++                       
++auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, int maxCount) {
+                       
+   auto timings = std::array<std::pair<size_t, std::chrono::nanoseconds>, 256>{};
+   for (size_t msgi = 0; msgi != maxCount; ++msgi) {
+@@ -84,8 +85,6 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
+     auto& [count, nanos] = timings[(int)currentMessageType];
+     ++count;                    
+     nanos += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+-               
+-    onUpdate();
+   }
+   return timings;                                                                                        
+ }  
+@@ -110,26 +109,29 @@ void f() try {                                                                      
+     auto& book = books[id];               
+     return strategies::TrivialStrategy(book);                                                            
+   }();
++  
++  auto onUpdate = [&strategy](auto timestamp) {
++    strategy.onUpdate();                                                                                 
++  };                                                                                                                                                                                                                
+                                                                                                                                                                                                                     
+-  auto addOrder = [&books](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) { 
++  auto addOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
+     books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
+-    std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
++    //std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
++    onUpdate(timestamp);                          
+   };            
+    
+-  auto deleteOrder = [&books](auto timestamp, auto stock_locate, auto oid) {
++  auto deleteOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid) {
+     auto const orderId = toLobType(oid);                                                                 
+     if (books[stock_locate].deleteOrder(orderId)) {                                                                                                                                                                 
+       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
++      onUpdate(timestamp);
+     } else {
+       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
+     }                   
+   };                                                                                               
+                                             
+-  auto onUpdate = [&strategy]() {
+-    strategy.onUpdate();
+-  };                                       
+                                         
+-  auto const timings = processMessages(reader, addOrder, deleteOrder, onUpdate, maxCount);
++  auto const timings = processMessages(reader, addOrder, deleteOrder, maxCount);
+ 
+   for (char msgType = 'A'; msgType <= 'Z'; ++msgType) {                                            
+     auto const [count, nanos] = timings[msgType];                                                        
+diff --git a/lob/lob/RingBuffer.h b/lob/lob/RingBuffer.h
+index 66cc1d8..552311d 100644                                                                             
+--- a/lob/lob/RingBuffer.h
++++ b/lob/lob/RingBuffer.h
+@@ -4,6 +4,7 @@
+ #include <atomic>
+ #include <cassert>
+ #include <deque>
++#include <algorithm>
+  
+ // single producer, multiple consumers ring buffer
+ template <class T, size_t N>
+diff --git a/lob/lob/lob.h b/lob/lob/lob.h
+index 38ea417..4d117ad 100644
+--- a/lob/lob/lob.h
++++ b/lob/lob/lob.h
+@@ -210,6 +210,26 @@ class LimitOrderBook {
+     return mAsk.rbegin()->second.depth();
+   }
+  
++  struct TopOfBook {
++    Level<Precision> bid = 0;
++    int bidDepth = 0;
++    Level<Precision> ask = 0;
++    int askDepth = 0;
++  };
++
++  [[nodiscard]] auto top() const noexcept {
++    TopOfBook ret = {};
++    if (hasBids()) {
++      ret.bid = bid();
++      ret.bidDepth = bidDepth();
++    }
++    if (hasAsks()) {
++      ret.ask = ask();
++      ret.askDepth = askDepth();
++    }
++    return ret;
++  }
++
+   /*void PlaceMarketOrder(const Direction direction, const int size)
+   {
+     //std::print("MO (direction={}, size={})", direction, size);
+@@ -256,11 +276,6 @@ class LimitOrderBook {
+     std::cout << "Done, effective price: " << averagePrice << std::endl;
+   }*/
+
+- private:
+-  UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
+-  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
+-  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
+-
+   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) {
+     ostr << "[ LimitOrderBook begin ]" << std::endl; 
+     ostr << "Orders: ";
+@@ -278,6 +293,12 @@ class LimitOrderBook {
+     ostr << "[ LimitOrderBook end ]" << std::endl;
+     return ostr;
+   }
++
++ private:
++  UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
++  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mBid;
++  MapT<Level<Precision>, LevelOrders<Precision>, std::function<bool(Level<Precision>, Level<Precision>)>> mAsk;
++
+ };
+  
+ template <int Precision>
+@@ -323,6 +344,11 @@ class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
+     return LimitOrderBook<Precision>::askDepth();
+   }
+  
++  [[nodiscard]] auto top() const noexcept {
++    std::shared_lock const lock(mMutex);
++    return LimitOrderBook<Precision>::top();
++  }
++
+   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBookWithLocks const& book) {
+     return ostr << static_cast<LimitOrderBook<Precision>>(book);
+   }

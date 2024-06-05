@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "ItchToLobType.h"
+#include "Simulator.h"
 #include "Strategies.h"
 
 static_assert(strategies::Strategy<strategies::TrivialStrategy<lob::LimitOrderBook<4>>>);
@@ -30,26 +31,23 @@ auto getTestFile() {
   return md::MappedFile(filename);
 }
 
-auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, auto const& onUpdate, int maxCount) {
-  
-  auto timings = std::array<std::pair<size_t, std::chrono::nanoseconds>, 256>{};
-  for (size_t msgi = 0; msgi != maxCount; ++msgi) {
-    if (reader.remaining() < 3) {
-      std::cout << "No more messages (msgi: " << msgi << ")" << std::endl;
-      break;
-    }
+auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder)
+    -> std::pair<md::itch::types::timestamp_t, std::function<void()>> {
+  while (reader.remaining() >= 3) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
     auto const start = std::chrono::high_resolution_clock::now();
     switch (currentMessageType) {
       case md::itch::messages::MessageType::ADD_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER>(reader);
-        addOrder(msg.timestamp, msg.stock_locate, msg.oid, msg.buy, msg.qty, msg.price);
-        break;
+        return {msg.timestamp, [msg, &addOrder] {
+                  addOrder(msg.timestamp, msg.stock_locate, msg.oid, msg.buy, msg.qty, msg.price);
+                }};
       }
       case md::itch::messages::MessageType::ADD_ORDER_MPID: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER_MPID>(reader);
-        addOrder(msg.add_msg.timestamp, msg.add_msg.stock_locate, msg.add_msg.oid, msg.add_msg.buy, msg.add_msg.qty, msg.add_msg.price);
-        break;
+        return {msg.add_msg.timestamp, [msg, &addOrder] {
+                  addOrder(msg.add_msg.timestamp, msg.add_msg.stock_locate, msg.add_msg.oid, msg.add_msg.buy, msg.add_msg.qty, msg.add_msg.price);
+                }};
       }
       case md::itch::messages::MessageType::REPLACE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REPLACE_ORDER>(reader);
@@ -73,27 +71,35 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
       }
       case md::itch::messages::MessageType::DELETE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::DELETE_ORDER>(reader);
-        deleteOrder(msg.timestamp, msg.stock_locate, msg.oid);
-        break;
+        return {msg.timestamp, [msg, &deleteOrder] {
+                  deleteOrder(msg.timestamp, msg.stock_locate, msg.oid);
+                }};
       }
       default:
         md::itch::skipCurrentMessage(reader);
     }
-
-    auto const end = std::chrono::high_resolution_clock::now();
-    auto& [count, nanos] = timings[(int)currentMessageType];
-    ++count;
-    nanos += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-
-    onUpdate();
   }
-  return timings;
+  throw std::runtime_error("end of messages");
+}
+
+auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, int maxCount) {
+  for (size_t msgi = 0; msgi != maxCount; ++msgi) {
+    if (reader.remaining() < 3) {
+      std::cout << "No more messages" << std::endl;
+      break;
+    }
+    auto [timestamp, f] = getNextMarketDataEvent(reader, addOrder, deleteOrder);
+    //std::cout << "timestamp: " << toString(timestamp) << ", executing a message" << std::endl;
+    f();
+  }
 }
 
 }  // namespace
 
-template <class LobT>
-void f() try {
+int main() try {
+  using LobT = lob::LimitOrderBook<4>;
+  // using LobT = lob::LimitOrderBookWithLocks<4>;
+
   std::cout << "Loading test file..." << std::endl;
 
   auto const file = getTestFile();
@@ -103,50 +109,44 @@ void f() try {
 
   std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
 
-  boost::unordered_map<int, LobT> books;
-  
+  auto books = boost::unordered_map<int, LobT>{};
+
   auto strategy = [&] {
     auto const id = symbols.byName("QQQ");
     auto& book = books[id];
     return strategies::TrivialStrategy(book);
   }();
 
-  auto addOrder = [&books](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
-    books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
-    std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
+  auto onUpdate = [&strategy]() {
+    strategy.onUpdate();
   };
 
-  auto deleteOrder = [&books](auto timestamp, auto stock_locate, auto oid) {
+  auto addOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
+    books[stock_locate].addOrder(toLobType(oid), toLobType(buy), toLobType(qty), toLobType(price));
+    // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
+    onUpdate();
+  };
+
+  auto deleteOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid) {
     auto const orderId = toLobType(oid);
     if (books[stock_locate].deleteOrder(orderId)) {
       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
+      onUpdate();
     } else {
       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
     }
   };
 
-  auto onUpdate = [&strategy]() {
-    strategy.onUpdate();
+  auto getNextMarketDataEvent = [&reader, &addOrder, &deleteOrder] {
+    ::getNextMarketDataEvent(reader, addOrder, deleteOrder);
   };
 
-  auto const timings = processMessages(reader, addOrder, deleteOrder, onUpdate, maxCount);
+  auto simulator = simulator::Simulator<md::itch::types::timestamp_t>{};
 
-  for (char msgType = 'A'; msgType <= 'Z'; ++msgType) {
-    auto const [count, nanos] = timings[msgType];
-    if (count) {
-      std::cout << msgType << ": " << static_cast<double>(nanos.count()) / count << " nanos per message (" << count << " messages)" << std::endl;
-    }
-  }
+  processMessages(reader, addOrder, deleteOrder, maxCount);
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
 } catch (...) {
   std::cout << "Unknown exception" << std::endl;
-}
-
-int main() {
-  f<lob::LimitOrderBook<4>>();
-  f<lob::LimitOrderBook<4>>();
-  f<lob::LimitOrderBookWithLocks<4>>();
-  f<lob::LimitOrderBookWithLocks<4>>();
 }
