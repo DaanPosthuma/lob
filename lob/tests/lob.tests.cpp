@@ -3,7 +3,7 @@
 #include <lob/lob.h>
 
 namespace {
-  
+
 static_assert(lob::OrderId{12345} == lob::OrderId{12345});
 static_assert(lob::OrderId{10} < lob::OrderId{50});
 
@@ -93,7 +93,7 @@ TEST(LOB, RingBuffer) {
     ASSERT_EQ(data, (std::deque{0}));
   }
 
-  b.push(1); 
+  b.push(1);
 
   {
     auto const [data, m, M] = b.read(0);
@@ -115,7 +115,7 @@ TEST(LOB, RingBuffer) {
     ASSERT_EQ(M, 3);
     ASSERT_EQ(data, (std::deque{0, 1, 2, 3}));
   }
-  
+
   {
     auto [data, m, M] = b.read(2);
 
@@ -169,7 +169,6 @@ TEST(LOB, RingBuffer) {
     ASSERT_EQ(data, (std::deque{4, 5, 6, 7}));
   }
 
-  
   b.push(8);
 
   {
@@ -224,7 +223,6 @@ TEST(LOB, RingBuffer) {
     ASSERT_EQ(m, 0);
     ASSERT_EQ(M, 0);
   }
-
 }
 
 TEST(LOB, RingBufferAsync) {
@@ -241,25 +239,25 @@ TEST(LOB, RingBufferAsync) {
     ASSERT_EQ(data.size(), 4);
     ASSERT_EQ(m, 0);
     ASSERT_EQ(M, 3);
-    ASSERT_EQ(data, (std::deque{0,1,2,3}));
+    ASSERT_EQ(data, (std::deque{0, 1, 2, 3}));
   }
 
   {
-    auto const [data, m, M] = b.readWithAsyncF(0, [&]{b.push(4);});
+    auto const [data, m, M] = b.readWithAsyncF(0, [&] { b.push(4); });
 
     ASSERT_EQ(data.size(), 4);
     ASSERT_EQ(m, 1);
     ASSERT_EQ(M, 4);
-    ASSERT_EQ(data, (std::deque{1,2,3,4}));
+    ASSERT_EQ(data, (std::deque{1, 2, 3, 4}));
   }
 
   {
-    auto const [data, m, M] = b.readWithAsyncF(0, [&]{b.push(5); b.push(6);});
+    auto const [data, m, M] = b.readWithAsyncF(0, [&] {b.push(5); b.push(6); });
 
     ASSERT_EQ(data.size(), 4);
     ASSERT_EQ(m, 3);
     ASSERT_EQ(M, 6);
-    ASSERT_EQ(data, (std::deque{3,4,5,6}));
+    ASSERT_EQ(data, (std::deque{3, 4, 5, 6}));
   }
 }
 

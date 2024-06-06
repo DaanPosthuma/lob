@@ -30,7 +30,7 @@ auto getTestFile() {
 }
 
 auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder)
-    -> std::pair<md::itch::types::timestamp_t, std::function<void()>> {
+    -> simulator::Simulator<md::itch::types::timestamp_t>::EventT {
   while (reader.remaining() >= 3) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
     auto const start = std::chrono::high_resolution_clock::now();
@@ -87,7 +87,7 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
       break;
     }
     auto [timestamp, f] = getNextMarketDataEvent(reader, addOrder, deleteOrder);
-    //std::cout << "timestamp: " << toString(timestamp) << ", executing a message" << std::endl;
+    // std::cout << "timestamp: " << toString(timestamp) << ", executing a message" << std::endl;
     f();
   }
 }
@@ -109,38 +109,53 @@ int main() try {
 
   auto books = boost::unordered_map<int, LobT>{};
 
-  auto strategy = [&] {
-    auto const id = symbols.byName("QQQ");
-    auto& book = books[id];
-    return strategies::TrivialStrategy(book);
-  }();
-
-  auto onUpdate = [&strategy](auto timestamp) {
-    strategy.onUpdate(timestamp);
-  };
-
-  auto addOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
+  auto addOrder = [&books](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
     books[stock_locate].addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
     // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
-    onUpdate(timestamp);
   };
 
-  auto deleteOrder = [&books, &onUpdate](auto timestamp, auto stock_locate, auto oid) {
+  auto deleteOrder = [&books](auto timestamp, auto stock_locate, auto oid) {
     if (books[stock_locate].deleteOrder(toOrderId(oid))) {
       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
-      onUpdate(timestamp);
     } else {
       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
     }
   };
 
   auto getNextMarketDataEvent = [&reader, &addOrder, &deleteOrder] {
-    ::getNextMarketDataEvent(reader, addOrder, deleteOrder);
+    return ::getNextMarketDataEvent(reader, addOrder, deleteOrder);
   };
 
-  auto simulator = simulator::Simulator<md::itch::types::timestamp_t>{};
+  auto simulator = simulator::Simulator<md::itch::types::timestamp_t>{getNextMarketDataEvent};
 
-  processMessages(reader, addOrder, deleteOrder, maxCount);
+  using namespace std::chrono_literals;
+
+  auto trigger = [&simulator](md::itch::types::timestamp_t timestamp) {
+    static int eventId = 0;
+    auto const eventTs100 = md::itch::types::timestamp_t(timestamp + 100us);
+    auto const eventTs500 = md::itch::types::timestamp_t(timestamp + 500us);
+    std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs100) << "\n";
+    simulator.addSimulationEvent({eventTs100, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
+    eventId++;
+
+    std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs500) << "\n";
+    simulator.addSimulationEvent({eventTs500, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
+    eventId++;
+  };
+
+  auto strategy = [&] {
+    auto const id = symbols.byName("QQQ");
+    auto& book = books[id];
+    return strategies::TrivialStrategy(book, trigger);
+  }();
+
+  for (int i : std::views::iota(0, 30)) {
+    std::cout << "\nSimulation iteration " << i << ":\n";
+    auto timestamp = simulator.step();
+    strategy.onUpdate(timestamp);
+  }
+
+  // processMessages(reader, addOrder, deleteOrder, maxCount);
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
