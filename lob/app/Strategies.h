@@ -4,8 +4,6 @@
 
 namespace strategies {
 
-namespace detail {
-
 struct StrategyDiagnostics {
   double cumBid = {};
   double cumAsk = {};
@@ -14,6 +12,9 @@ struct StrategyDiagnostics {
   double minAsk = std::numeric_limits<double>::max();
   double maxAsk = std::numeric_limits<double>::min();
   long numObs = {};
+  size_t numBufferOverflows = 0;
+  size_t numUpdatesMissed = 0;
+  size_t maxBufferSize = 0;
 
   void addObs(double b, double a) {
     cumBid += b;
@@ -31,42 +32,75 @@ struct StrategyDiagnostics {
     }
   }
 
+  void bufferLoad(size_t readIdx, size_t m, size_t M) {
+    auto misses = m - readIdx;
+    numBufferOverflows += misses > 0 ? 1 : 0;
+    numUpdatesMissed += m - readIdx;
+    maxBufferSize = std::max(maxBufferSize, M - m + 1);
+  }
+
   void print() const {
     std::cout << "Num obs: " << numObs << std::endl;
     std::cout << "Avg bid: " << cumBid / numObs << std::endl;
     std::cout << "Avg ask: " << cumAsk / numObs << std::endl;
     std::cout << "Min/max bid: " << minBid << " " << maxBid << std::endl;
     std::cout << "Min/max ask: " << minAsk << " " << maxAsk << std::endl;
+
+    std::cout << "Buffer overflows: " << numBufferOverflows << std::endl;
+    std::cout << "Updates missed: " << numUpdatesMissed << std::endl;
+    std::cout << "Max buffer size: " << maxBufferSize << std::endl;
   }
 };
 
-}  // namespace detail
-
-template <class BookT>
+template <class BookT, class TopOfBookBufferT>
 class TrivialStrategy {
  public:
-  TrivialStrategy(BookT& book, std::function<void(md::itch::types::timestamp_t)> f) : mBook(book), mF(std::move(f)) {}
+  TrivialStrategy(BookT const& book,
+                  TopOfBookBufferT const& topOfBookBuffer,
+                  std::function<void(md::itch::types::timestamp_t)> f)
+      : mBook(book),
+        mTopOfBookBuffer(topOfBookBuffer),
+        mF(std::move(f)) {}
 
   void onUpdate(auto timestamp) noexcept {
-    auto const top = mBook.top();
+    auto [updates, m, M] = mTopOfBookBuffer.read(mBufferReadIdx);
+
+    if (updates.empty()) return;
+
+    mDiagnostics.bufferLoad(mBufferReadIdx, m, M);
+
+    std::cout << "onUpdate timestamp: " << toString(timestamp) << ", num updates: " << updates.size() << ", m: " << m << ", M: " << M << '\n';
+
+    for (auto top : updates) {
+      std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
+      mDiagnostics.addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
+    }
+    mBufferReadIdx = M + 1;
+
+    /*auto const top = mBook.top();
     if (top != mPreviousTop) {
       std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
       mPreviousTop = top;
 
       mDiagnostics.addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
-    }
+
+      //std::cout << mTopOfBookBuffer.size() << std::endl;
+    }*/
   }
 
-  void printDiagnostics() const {
-    mDiagnostics.print();
+  auto const& getDiagnostics() const {
+    return mDiagnostics;
   }
 
  private:
-  BookT& mBook;
+  BookT const& mBook;
   BookT::TopOfBook mPreviousTop = {};
   std::function<void(md::itch::types::timestamp_t)> mF = {};
 
-  detail::StrategyDiagnostics mDiagnostics = {};
+  TopOfBookBufferT const& mTopOfBookBuffer;
+  size_t mBufferReadIdx = 0;
+
+  StrategyDiagnostics mDiagnostics = {};
 };
 
 }  // namespace strategies

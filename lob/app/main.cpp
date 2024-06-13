@@ -1,4 +1,5 @@
 ﻿#include <lob/lob.h>
+#include <lob/RingBuffer.h>
 #include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
@@ -108,17 +109,28 @@ int main() try {
   std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
 
   auto books = boost::unordered_map<int, LobT>{};
+  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<LobT::TopOfBook, 16>>{};
 
-  auto addOrder = [&books](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
-    books[stock_locate].addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
+  auto addOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
+    auto& book = books[stock_locate];
+    auto before = book.top();
+    book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
+    if (before != book.top()) {
+      topOfBookBuffers[stock_locate].push(book.top());
+    }
     // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
   };
 
-  auto deleteOrder = [&books](auto timestamp, auto stock_locate, auto oid) {
+  auto deleteOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid) {
+    auto& book = books[stock_locate];
+    auto before = book.top();
     if (books[stock_locate].deleteOrder(toOrderId(oid))) {
       // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
     } else {
       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
+    }
+    if (before != book.top()) {
+      topOfBookBuffers[stock_locate].push(book.top());
     }
   };
 
@@ -145,17 +157,18 @@ int main() try {
 
   auto strategy = [&] {
     auto const id = symbols.byName("QQQ");
-    auto& book = books[id];
-    return strategies::TrivialStrategy(book, trigger);
+    auto const& book = books[id];
+    auto const& topOfBookBuffer = topOfBookBuffers[id];
+    return strategies::TrivialStrategy(book, topOfBookBuffer, trigger);
   }();
 
   for (int i : std::views::iota(0, 1000000)) {
     //std::cout << "\nSimulation iteration " << i << ":\n";
     auto timestamp = simulator.step();
-    strategy.onUpdate(timestamp);
+    if (i % 1000 == 0) strategy.onUpdate(timestamp);
   }
 
-  strategy.printDiagnostics();
+  strategy.getDiagnostics().print();
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;

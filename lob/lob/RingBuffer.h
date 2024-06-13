@@ -65,6 +65,10 @@ class RingBuffer {
     return readWithAsyncF(idx, [](){});
   }
 
+  [[nodiscard]] auto size() const {
+    return mSize.load();
+  }
+
  private:
   std::array<T, N> mData = {};
   std::atomic<size_t> mSize = 0;

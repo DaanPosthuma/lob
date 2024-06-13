@@ -167,6 +167,9 @@ class LimitOrderBook {
     // todo(?): check if we can (partially) trade
     auto it = (direction == Direction::Sell ? mAsk : mBid)[level].add(size, direction, level, orderId);
     mOrders.emplace(orderId, it);
+
+    updateTop(); // todo: only update when best bid or lowest ask is affected
+
     return orderId;
   }
 
@@ -180,6 +183,8 @@ class LimitOrderBook {
     side[level].remove(orderIt);
     if (side[level].empty()) side.erase(level);
     mOrders.erase(it);
+
+    updateTop(); // todo: only update when best bid or lowest ask is changed
 
     return true;
   }
@@ -218,16 +223,18 @@ class LimitOrderBook {
   };
 
   [[nodiscard]] auto top() const noexcept {
-    TopOfBook ret = {};
+    return mTop;
+  }
+
+  [[nodiscard]] auto updateTop() noexcept {
     if (hasBids()) {
-      ret.bid = bid();
-      ret.bidDepth = bidDepth();
+      mTop.bid = bid();
+      mTop.bidDepth = bidDepth();
     }
     if (hasAsks()) {
-      ret.ask = ask();
-      ret.askDepth = askDepth();
+      mTop.ask = ask();
+      mTop.askDepth = askDepth();
     }
-    return ret;
   }
 
   /*void PlaceMarketOrder(const Direction direction, const int size)
@@ -280,6 +287,7 @@ class LimitOrderBook {
   UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
   MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mBid;
   MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mAsk;
+  TopOfBook mTop = {};
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) noexcept {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
