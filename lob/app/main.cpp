@@ -14,6 +14,7 @@
 #include "ItchToLobType.h"
 #include "Simulator.h"
 #include "Strategies.h"
+#include "PinToCore.h"
 
 namespace {
 
@@ -95,7 +96,8 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
 
 }  // namespace
 
-int main() try {
+template <bool SingleThreaded>
+void f(int numIters) try {
   using LobT = lob::LimitOrderBook<4>;
   // using LobT = lob::LimitOrderBookWithLocks<4>;
 
@@ -109,7 +111,7 @@ int main() try {
   std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
 
   auto books = boost::unordered_map<int, LobT>{};
-  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<LobT::TopOfBook, 16>>{};
+  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<LobT::TopOfBook, 64>>{};
 
   auto addOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
     auto& book = books[stock_locate];
@@ -142,36 +144,64 @@ int main() try {
 
   using namespace std::chrono_literals;
 
-  auto trigger = [&simulator](md::itch::types::timestamp_t timestamp) {
-    //static int eventId = 0;
-    //auto const eventTs100 = md::itch::types::timestamp_t(timestamp + 100us);
-    //auto const eventTs500 = md::itch::types::timestamp_t(timestamp + 500us);
-    //std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs100) << "\n";
-    //simulator.addSimulationEvent({eventTs100, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
-    //eventId++;
-
-    //std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs500) << "\n";
-    //simulator.addSimulationEvent({eventTs500, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
-    //eventId++;
-  };
-
-  auto strategy = [&] {
+  auto createStrategy = [&] {
     auto const id = symbols.byName("QQQ");
     auto const& book = books[id];
     auto const& topOfBookBuffer = topOfBookBuffers[id];
-    return strategies::TrivialStrategy(book, topOfBookBuffer, trigger);
-  }();
+    return strategies::TrivialStrategy(book, topOfBookBuffer, [](md::itch::types::timestamp_t){});
+  };
 
-  for (int i : std::views::iota(0, 1000000)) {
-    //std::cout << "\nSimulation iteration " << i << ":\n";
-    auto timestamp = simulator.step();
-    if (i % 1000 == 0) strategy.onUpdate(timestamp);
+  if constexpr (SingleThreaded) {
+    auto strategy = createStrategy();
+    for (int i : std::views::iota(0, numIters)) {
+      auto timestamp = simulator.step();
+      if (i % 64 == 0) strategy.onUpdate(timestamp);
+    }
+    std::cout << "Strategy and simulation done:" << std::endl;
+    strategy.getDiagnostics().print();
   }
+  else {
+    pin_to_core(0);
 
-  strategy.getDiagnostics().print();
+    auto const strategyLoop = [&createStrategy](std::stop_token st, int core) {
+      pin_to_core(core);
+      auto strategy = createStrategy();
+      while (!st.stop_requested()) { // todo: profile stop token vs atomic bool
+        strategy.onUpdate(md::itch::types::timestamp_t(0));
+        std::this_thread::sleep_for(1us);
+      }
+      std::cout << "Strategy thread done:" << std::endl;
+      strategy.getDiagnostics().print();
+    };
+
+    auto strategyThread1 = std::jthread(strategyLoop, 1);
+    auto strategyThread2 = std::jthread(strategyLoop, 2);
+    auto strategyThread3 = std::jthread(strategyLoop, 3);
+    auto strategyThread4 = std::jthread(strategyLoop, 4);
+
+    std::this_thread::sleep_for(1s);
+
+    for (int i : std::views::iota(0, numIters)) {
+      simulator.step();
+    }
+    std::cout << "Simulation done." << std::endl;
+    
+  }
+  
+  
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
 } catch (...) {
   std::cout << "Unknown exception" << std::endl;
+}
+
+int main() {
+  auto const numIters = 10000000;
+  std::cout << "Single thread:\n";
+  f<true>(numIters);
+  std::cout << '\n';
+  std::cout << "Multi-threaded:\n";
+  f<false>(numIters);
+  std::cout << '\n';
 }
