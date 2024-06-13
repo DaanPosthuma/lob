@@ -29,12 +29,12 @@ class Simulator {
     else std::cout << "No next strategy event\n";*/
 
     if (!strategyTimestamp || marketDataTimestamp < *strategyTimestamp) {
-      std::cout << "Processing market data event " << toString(marketDataTimestamp) << '\n';
+      //std::cout << "Processing market data event " << toString(marketDataTimestamp) << '\n';
       mNextMarketDataEvent.second();
       mNextMarketDataEvent = mRequestMarketDataEvent();
       return marketDataTimestamp;
     } else {
-      std::cout << "Processing simulation event " << toString(*strategyTimestamp) << '\n';
+      //std::cout << "Processing simulation event " << toString(*strategyTimestamp) << '\n';
       mNextStrategyEvents.top().second();
       mNextStrategyEvents.pop();
       return *strategyTimestamp;

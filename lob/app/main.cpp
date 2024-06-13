@@ -131,16 +131,16 @@ int main() try {
   using namespace std::chrono_literals;
 
   auto trigger = [&simulator](md::itch::types::timestamp_t timestamp) {
-    static int eventId = 0;
-    auto const eventTs100 = md::itch::types::timestamp_t(timestamp + 100us);
-    auto const eventTs500 = md::itch::types::timestamp_t(timestamp + 500us);
-    std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs100) << "\n";
-    simulator.addSimulationEvent({eventTs100, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
-    eventId++;
+    //static int eventId = 0;
+    //auto const eventTs100 = md::itch::types::timestamp_t(timestamp + 100us);
+    //auto const eventTs500 = md::itch::types::timestamp_t(timestamp + 500us);
+    //std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs100) << "\n";
+    //simulator.addSimulationEvent({eventTs100, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
+    //eventId++;
 
-    std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs500) << "\n";
-    simulator.addSimulationEvent({eventTs500, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
-    eventId++;
+    //std::cout << "Adding simulation event " << eventId << " for " << toString(eventTs500) << "\n";
+    //simulator.addSimulationEvent({eventTs500, [eventId = eventId] { std::cout << "Event " << eventId << "!\n"; }});
+    //eventId++;
   };
 
   auto strategy = [&] {
@@ -149,13 +149,13 @@ int main() try {
     return strategies::TrivialStrategy(book, trigger);
   }();
 
-  for (int i : std::views::iota(0, 30)) {
-    std::cout << "\nSimulation iteration " << i << ":\n";
+  for (int i : std::views::iota(0, 1000000)) {
+    //std::cout << "\nSimulation iteration " << i << ":\n";
     auto timestamp = simulator.step();
     strategy.onUpdate(timestamp);
   }
 
-  // processMessages(reader, addOrder, deleteOrder, maxCount);
+  strategy.printDiagnostics();
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
