@@ -197,17 +197,17 @@ void f(int numIters) try {
     auto pool = exec::static_thread_pool(5);
 
     auto work = stdexec::when_all(
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(0); }) | stdexec::then([&] { return strategyLoop("QQQ"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(1); }) | stdexec::then([&] { return strategyLoop("SPY"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(2); }) | stdexec::then([&] { return strategyLoop("AMD"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(3); }) | stdexec::then([&] { return strategyLoop("IWM"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(4); }) | stdexec::then(simulatorLoop));
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<0>) | stdexec::then([&] { return strategyLoop("QQQ"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<1>) | stdexec::then([&] { return strategyLoop("SPY"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<2>) | stdexec::then([&] { return strategyLoop("AMD"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<3>) | stdexec::then([&] { return strategyLoop("IWM"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<4>) | stdexec::then(simulatorLoop));
 
-    auto diags = stdexec::sync_wait(std::move(work)).value();
+    auto diagnostics = stdexec::sync_wait(std::move(work)).value();
 
     std::cout << "Done!" << std::endl;
 
-    printTuple(diags);
+    printTuple(diagnostics);
   }
 
 } catch (std::exception const& ex) {
