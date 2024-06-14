@@ -1,5 +1,5 @@
-﻿#include <lob/lob.h>
-#include <lob/RingBuffer.h>
+﻿#include <lob/RingBuffer.h>
+#include <lob/lob.h>
 #include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
@@ -12,9 +12,9 @@
 #include <utility>
 
 #include "ItchToLobType.h"
+#include "PinToCore.h"
 #include "Simulator.h"
 #include "Strategies.h"
-#include "PinToCore.h"
 
 namespace {
 
@@ -144,40 +144,38 @@ void f(int numIters) try {
 
   using namespace std::chrono_literals;
 
-  auto createStrategy = [&] {
-    auto const id = symbols.byName("QQQ");
+  auto createStrategy = [&](std::string const& symbolName) {
+    auto const id = symbols.byName(symbolName);
     auto const& book = books[id];
     auto const& topOfBookBuffer = topOfBookBuffers[id];
-    return strategies::TrivialStrategy(book, topOfBookBuffer, [](md::itch::types::timestamp_t){});
+    return strategies::TrivialStrategy(book, topOfBookBuffer, [](md::itch::types::timestamp_t) {});
   };
 
   if constexpr (SingleThreaded) {
-    auto strategy = createStrategy();
+    auto strategy = createStrategy("QQQ");
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
       if (i % 64 == 0) strategy.onUpdate(timestamp);
     }
     std::cout << "Strategy and simulation done:" << std::endl;
     strategy.getDiagnostics().print();
-  }
-  else {
+  } else {
     pin_to_core(0);
 
-    auto const strategyLoop = [&createStrategy](std::stop_token st, int core) {
+    auto const strategyLoop = [&createStrategy](std::stop_token st, int core, std::string const& symbolName) {
       pin_to_core(core);
-      auto strategy = createStrategy();
-      while (!st.stop_requested()) { // todo: profile stop token vs atomic bool
+      auto strategy = createStrategy(symbolName);
+      while (!st.stop_requested()) {  // todo: measure time from market data event to strategy onUpdate
         strategy.onUpdate(md::itch::types::timestamp_t(0));
-        std::this_thread::sleep_for(1us);
       }
-      std::cout << "Strategy thread done:" << std::endl;
+      std::cout << "Strategy thread " << core << " (" << symbolName << ") done:" << std::endl;
       strategy.getDiagnostics().print();
     };
 
-    auto strategyThread1 = std::jthread(strategyLoop, 1);
-    auto strategyThread2 = std::jthread(strategyLoop, 2);
-    auto strategyThread3 = std::jthread(strategyLoop, 3);
-    auto strategyThread4 = std::jthread(strategyLoop, 4);
+    auto strategyThread1 = std::jthread(strategyLoop, 1, "QQQ");
+    auto strategyThread2 = std::jthread(strategyLoop, 2, "SPY");
+    auto strategyThread3 = std::jthread(strategyLoop, 3, "AMD");
+    auto strategyThread4 = std::jthread(strategyLoop, 4, "IWM");
 
     std::this_thread::sleep_for(1s);
 
@@ -185,10 +183,7 @@ void f(int numIters) try {
       simulator.step();
     }
     std::cout << "Simulation done." << std::endl;
-    
   }
-  
-  
 
 } catch (std::exception const& ex) {
   std::cout << "Exception: " << ex.what() << std::endl;
@@ -198,10 +193,19 @@ void f(int numIters) try {
 
 int main() {
   auto const numIters = 10000000;
-  std::cout << "Single thread:\n";
-  f<true>(numIters);
-  std::cout << '\n';
-  std::cout << "Multi-threaded:\n";
-  f<false>(numIters);
-  std::cout << '\n';
+  {
+    std::cout << "Single thread:\n";
+    auto const start = std::chrono::high_resolution_clock::now();
+    f<true>(numIters);
+    auto const end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " millis.\n\n";
+  }
+
+  {
+    std::cout << "Multi-threaded:\n";
+    auto const start = std::chrono::high_resolution_clock::now();
+    f<false>(numIters);
+    auto const end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " millis.\n\n";
+  }
 }

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
 
 namespace strategies {
 
@@ -69,10 +71,10 @@ class TrivialStrategy {
 
     mDiagnostics.bufferLoad(mBufferReadIdx, m, M);
 
-    //std::cout << "onUpdate timestamp: " << toString(timestamp) << ", num updates: " << updates.size() << ", m: " << m << ", M: " << M << '\n';
+    // std::cout << "onUpdate timestamp: " << toString(timestamp) << ", num updates: " << updates.size() << ", m: " << m << ", M: " << M << '\n';
 
     for (auto top : updates) {
-      //std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
+      // std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
       mDiagnostics.addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
     }
     mBufferReadIdx = M + 1;

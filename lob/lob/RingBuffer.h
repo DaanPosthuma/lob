@@ -4,6 +4,8 @@
 #include <atomic>
 #include <cassert>
 #include <deque>
+#include <functional>
+#include <iterator>
 
 // single producer, multiple consumers ring buffer
 template <class T, size_t N>
@@ -41,7 +43,7 @@ class RingBuffer {
       std::ranges::copy(mData.data(), mData.data() + M0m + 1, std::back_inserter(ret.data));
     }
 
-    // some of the data might be invalid if producer wrote over front of data after mSize.load() above, 
+    // some of the data might be invalid if producer wrote over front of data after mSize.load() above,
     // so we'll discard this potentially invalid data and add new data
     auto const s1 = mSize.load();
     auto const m1 = std::max(idx, s1 > N ? s1 - N : 0);
@@ -62,7 +64,7 @@ class RingBuffer {
   }
 
   [[nodiscard]] auto read(size_t idx) const {
-    return readWithAsyncF(idx, [](){});
+    return readWithAsyncF(idx, []() {});
   }
 
   [[nodiscard]] auto size() const {
