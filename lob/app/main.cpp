@@ -8,7 +8,10 @@
 
 #include <boost/unordered_map.hpp>
 #include <chrono>
+#include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <iostream>
+#include <stdexec/execution.hpp>
 #include <utility>
 
 #include "ItchToLobType.h"
@@ -94,6 +97,16 @@ auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto co
   }
 }
 
+template <typename TupleT, std::size_t... Is>
+void printTupleImp(const TupleT& tp, std::index_sequence<Is...>) {
+  (std::get<Is>(tp).print(), ...);
+}
+
+template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
+void printTuple(const TupleT& tp) {
+  printTupleImp(tp, std::make_index_sequence<TupSize>{});
+}
+
 }  // namespace
 
 template <bool SingleThreaded>
@@ -159,29 +172,42 @@ void f(int numIters) try {
     std::cout << "Strategy and simulation done:" << std::endl;
     strategy.getDiagnostics().print();
   } else {
-    pin_to_core(0);
+    std::atomic<bool> running = true;
 
-    auto const strategyLoop = [&createStrategy](std::stop_token st, int core, std::string const& symbolName) {
-      pin_to_core(core);
-      auto strategy = createStrategy(symbolName);
-      while (!st.stop_requested()) {  // todo: measure time from market data event to strategy onUpdate
-        strategy.onUpdate(md::itch::types::timestamp_t(0));
+    auto const simulatorLoop = [&]() {
+      std::this_thread::sleep_for(1s);
+
+      for (int i : std::views::iota(0, numIters)) {
+        simulator.step();
       }
-      std::cout << "Strategy thread " << core << " (" << symbolName << ") done:" << std::endl;
-      strategy.getDiagnostics().print();
+      std::cout << "Simulation done." << std::endl;
+      running = false;
     };
 
-    auto strategyThread1 = std::jthread(strategyLoop, 1, "QQQ");
-    auto strategyThread2 = std::jthread(strategyLoop, 2, "SPY");
-    auto strategyThread3 = std::jthread(strategyLoop, 3, "AMD");
-    auto strategyThread4 = std::jthread(strategyLoop, 4, "IWM");
+    auto const strategyLoop = [&](std::string const& symbolName) {
+      auto strategy = createStrategy(symbolName);
+      while (running) {
+        for (int i = 0; i != 10000; ++i) {
+          strategy.onUpdate(md::itch::types::timestamp_t(0));
+        }
+      }
+      return strategy.getDiagnostics();
+    };
 
-    std::this_thread::sleep_for(1s);
+    auto pool = exec::static_thread_pool(5);
 
-    for (int i : std::views::iota(0, numIters)) {
-      simulator.step();
-    }
-    std::cout << "Simulation done." << std::endl;
+    auto work = stdexec::when_all(
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(0); }) | stdexec::then([&] { return strategyLoop("QQQ"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(1); }) | stdexec::then([&] { return strategyLoop("SPY"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(2); }) | stdexec::then([&] { return strategyLoop("AMD"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(3); }) | stdexec::then([&] { return strategyLoop("IWM"); }),
+        stdexec::schedule(pool.get_scheduler()) | stdexec::then([] { pin_to_core(4); }) | stdexec::then(simulatorLoop));
+
+    auto diags = stdexec::sync_wait(std::move(work)).value();
+
+    std::cout << "Done!" << std::endl;
+
+    printTuple(diags);
   }
 
 } catch (std::exception const& ex) {

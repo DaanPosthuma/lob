@@ -51,6 +51,7 @@ struct StrategyDiagnostics {
     std::cout << "Buffer overflows: " << numBufferOverflows << std::endl;
     std::cout << "Updates missed: " << numUpdatesMissed << std::endl;
     std::cout << "Max buffer size: " << maxBufferSize << std::endl;
+    std::cout << std::endl;
   }
 };
 
@@ -76,16 +77,6 @@ class TrivialStrategy {
       mDiagnostics.addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
     }
     mBufferReadIdx = M + 1;
-
-    /*auto const top = mBook.top();
-    if (top != mPreviousTop) {
-      std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
-      mPreviousTop = top;
-
-      mDiagnostics.addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
-
-      //std::cout << mTopOfBookBuffer.size() << std::endl;
-    }*/
   }
 
   auto const& getDiagnostics() const {
