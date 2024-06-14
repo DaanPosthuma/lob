@@ -11,8 +11,9 @@
 template <class T, size_t N>
 class RingBuffer {
  public:
+  using DataT = T;
   void push(T item) noexcept {
-    mData[mSize.load() % N] = item;
+    mData[mSize.load(std::memory_order_acquire) % N] = item;
     ++mSize;
   }
 
@@ -25,7 +26,7 @@ class RingBuffer {
 
     R ret;
 
-    auto const s0 = mSize.load();
+    auto const s0 = mSize.load(std::memory_order_acquire);
 
     f();
 
@@ -45,7 +46,7 @@ class RingBuffer {
 
     // some of the data might be invalid if producer wrote over front of data after mSize.load() above,
     // so we'll discard this potentially invalid data and add new data
-    auto const s1 = mSize.load();
+    auto const s1 = mSize.load(std::memory_order_acquire);
     auto const m1 = std::max(idx, s1 > N ? s1 - N : 0);
     auto const M1 = s1 - 1;
 
@@ -68,7 +69,7 @@ class RingBuffer {
   }
 
   [[nodiscard]] auto size() const {
-    return mSize.load();
+    return mSize.load(std::memory_order_acquire);
   }
 
  private:

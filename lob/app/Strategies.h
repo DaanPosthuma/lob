@@ -54,14 +54,12 @@ struct StrategyDiagnostics {
   }
 };
 
-template <class BookT, class TopOfBookBufferT>
+template <class TopOfBookBufferT>
 class TrivialStrategy {
  public:
-  TrivialStrategy(BookT const& book,
-                  TopOfBookBufferT const& topOfBookBuffer,
+  TrivialStrategy(TopOfBookBufferT const& topOfBookBuffer,
                   std::function<void(md::itch::types::timestamp_t)> f)
-      : mBook(book),
-        mTopOfBookBuffer(topOfBookBuffer),
+      : mTopOfBookBuffer(topOfBookBuffer),
         mF(std::move(f)) {}
 
   void onUpdate(auto timestamp) noexcept {
@@ -95,8 +93,7 @@ class TrivialStrategy {
   }
 
  private:
-  BookT const& mBook;
-  BookT::TopOfBook mPreviousTop = {};
+  typename TopOfBookBufferT::DataT mPreviousTop = {};
   std::function<void(md::itch::types::timestamp_t)> mF = {};
 
   TopOfBookBufferT const& mTopOfBookBuffer;

@@ -146,9 +146,8 @@ void f(int numIters) try {
 
   auto createStrategy = [&](std::string const& symbolName) {
     auto const id = symbols.byName(symbolName);
-    auto const& book = books[id];
     auto const& topOfBookBuffer = topOfBookBuffers[id];
-    return strategies::TrivialStrategy(book, topOfBookBuffer, [](md::itch::types::timestamp_t) {});
+    return strategies::TrivialStrategy(topOfBookBuffer, [](md::itch::types::timestamp_t) {});
   };
 
   if constexpr (SingleThreaded) {
