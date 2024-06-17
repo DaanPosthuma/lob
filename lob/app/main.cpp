@@ -85,26 +85,14 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
   throw std::runtime_error("end of messages");
 }
 
-auto processMessages(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, int maxCount) {
-  for (size_t msgi = 0; msgi != maxCount; ++msgi) {
-    if (reader.remaining() < 3) {
-      std::cout << "No more messages" << std::endl;
-      break;
-    }
-    auto [timestamp, f] = getNextMarketDataEvent(reader, addOrder, deleteOrder);
-    // std::cout << "timestamp: " << toString(timestamp) << ", executing a message" << std::endl;
-    f();
-  }
-}
-
 template <typename TupleT, std::size_t... Is>
-void printTupleImp(const TupleT& tp, std::index_sequence<Is...>) {
-  (std::get<Is>(tp).print(), ...);
+void tuple_map_impl(const TupleT& tp, std::index_sequence<Is...>, auto const& f) {
+  (f(std::get<Is>(tp), Is), ...);
 }
 
 template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
-void printTuple(const TupleT& tp) {
-  printTupleImp(tp, std::make_index_sequence<TupSize>{});
+void tuple_map(const TupleT& tp, auto const& f) {
+  tuple_map_impl(tp, std::make_index_sequence<TupSize>{}, f);
 }
 
 }  // namespace
@@ -124,14 +112,14 @@ void f(int numIters) try {
   std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
 
   auto books = boost::unordered_map<int, LobT>{};
-  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<LobT::TopOfBook, 64>>{};
+  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>>{};
 
   auto addOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
     auto& book = books[stock_locate];
     auto before = book.top();
     book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
     if (before != book.top()) {
-      topOfBookBuffers[stock_locate].push(book.top());
+      topOfBookBuffers[stock_locate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
     // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
   };
@@ -145,7 +133,7 @@ void f(int numIters) try {
       // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
     }
     if (before != book.top()) {
-      topOfBookBuffers[stock_locate].push(book.top());
+      topOfBookBuffers[stock_locate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
   };
 
@@ -167,7 +155,7 @@ void f(int numIters) try {
     auto strategy = createStrategy("QQQ");
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
-      if (i % 64 == 0) strategy.onUpdate(timestamp);
+      /*if (i % 64 == 0) */strategy.onUpdate();
     }
     std::cout << "Strategy and simulation done:" << std::endl;
     strategy.getDiagnostics().print();
@@ -188,7 +176,7 @@ void f(int numIters) try {
       auto strategy = createStrategy(symbolName);
       while (running) {
         for (int i = 0; i != 10000; ++i) {
-          strategy.onUpdate(md::itch::types::timestamp_t(0));
+          strategy.onUpdate();
         }
       }
       return strategy.getDiagnostics();
@@ -207,7 +195,13 @@ void f(int numIters) try {
 
     std::cout << "Done!" << std::endl;
 
-    printTuple(diagnostics);
+    auto f = [](auto const& accum, size_t i) {
+       std::cout << "Diagnostics " << i << ":\n";
+       accum.print();
+       std::cout << '\n';
+    };
+
+    tuple_map(diagnostics, f);
   }
 
 } catch (std::exception const& ex) {
