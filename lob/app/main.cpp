@@ -154,7 +154,7 @@ void f(int numIters) try {
     diagnostics.save("diagnostics/ST_QQQ.json");
 
   } else {
-    std::atomic<bool> running = true;
+    std::stop_source stopSource;
 
     auto const simulatorLoop = [&]() {
       std::this_thread::sleep_for(1s);
@@ -163,12 +163,12 @@ void f(int numIters) try {
         simulator.step();
       }
       std::cout << "Simulation done." << std::endl;
-      running = false;
+      stopSource.request_stop();
     };
 
-    auto const strategyLoop = [&](std::string const& symbolName) {
+    auto const strategyLoop = [&createStrategy, st=stopSource.get_token()](std::string const& symbolName) {
       auto strategy = createStrategy(symbolName);
-      while (running) {
+      while (!st.stop_requested()) {
         for (int i = 0; i != 10000; ++i) {
           strategy.onUpdate();
         }
@@ -179,16 +179,16 @@ void f(int numIters) try {
     auto pool = exec::static_thread_pool(5);
     auto const& sched = pool.get_scheduler();
 
-    using namespace stdexec;
+    namespace ex = stdexec;
 
-    auto work = when_all(
-        schedule(sched) | then(pin_to_core<0>) | then([&] { return strategyLoop("QQQ"); }) | then([&](auto const& d) { d.save("diagnostics/MT_QQQ.json"); return d; }),
-        schedule(sched) | then(pin_to_core<1>) | then([&] { return strategyLoop("SPY"); }) | then([&](auto const& d) { d.save("diagnostics/MT_SPY.json"); return d; }),
-        schedule(sched) | then(pin_to_core<2>) | then([&] { return strategyLoop("AMD"); }) | then([&](auto const& d) { d.save("diagnostics/MT_AMD.json"); return d; }),
-        schedule(sched) | then(pin_to_core<3>) | then([&] { return strategyLoop("IWM"); }) | then([&](auto const& d) { d.save("diagnostics/MT_IWM.json"); return d; }),
-        schedule(sched) | then(pin_to_core<4>) | then(simulatorLoop));
+    auto work = ex::when_all(
+        ex::schedule(sched) | ex::then(pin_to_core<0>) | ex::then([&] { return strategyLoop("QQQ"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_QQQ.json"); return d; }),
+        ex::schedule(sched) | ex::then(pin_to_core<1>) | ex::then([&] { return strategyLoop("SPY"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_SPY.json"); return d; }),
+        ex::schedule(sched) | ex::then(pin_to_core<2>) | ex::then([&] { return strategyLoop("AMD"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_AMD.json"); return d; }),
+        ex::schedule(sched) | ex::then(pin_to_core<3>) | ex::then([&] { return strategyLoop("IWM"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_IWM.json"); return d; }),
+        ex::schedule(sched) | ex::then(pin_to_core<4>) | ex::then(simulatorLoop));
 
-    auto diagnostics = sync_wait(std::move(work)).value();
+    auto diagnostics = ex::sync_wait(std::move(work)).value();
 
     std::cout << "Done!" << std::endl;
 
