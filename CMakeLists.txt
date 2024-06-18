@@ -8,7 +8,6 @@ project(lob
 
 message("Building with CMake version: ${CMAKE_VERSION}")
 
-# download CPM.cmake
 file(
   DOWNLOAD
   https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.38.3/CPM.cmake
@@ -23,6 +22,7 @@ find_package(GTest REQUIRED)
 find_package(Boost REQUIRED iostreams)
 find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 CONFIG)
+find_package(nlohmann_json REQUIRED)
 
 CPMAddPackage(
   NAME stdexec

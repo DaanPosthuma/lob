@@ -11,7 +11,7 @@ class CompressorRecipe(ConanFile):
     def requirements(self):
         self.requires("boost/1.84.0")
         self.requires("pybind11/2.12.0")
-        pass
+        self.requires("nlohmann_json/3.11.3")
 
     def build_requirements(self):
         self.tool_requires("cmake/3.29.2")

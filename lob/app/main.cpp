@@ -18,6 +18,7 @@
 #include "PinToCore.h"
 #include "Simulator.h"
 #include "Strategies.h"
+#include "TupleMap.h"
 
 namespace {
 
@@ -85,16 +86,6 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
   throw std::runtime_error("end of messages");
 }
 
-template <typename TupleT, std::size_t... Is>
-void tuple_map_impl(const TupleT& tp, std::index_sequence<Is...>, auto const& f) {
-  (f(std::get<Is>(tp), Is), ...);
-}
-
-template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
-void tuple_map(const TupleT& tp, auto const& f) {
-  tuple_map_impl(tp, std::make_index_sequence<TupSize>{}, f);
-}
-
 }  // namespace
 
 template <bool SingleThreaded>
@@ -148,17 +139,20 @@ void f(int numIters) try {
   auto createStrategy = [&](std::string const& symbolName) {
     auto const id = symbols.byName(symbolName);
     auto const& topOfBookBuffer = topOfBookBuffers[id];
-    return strategies::TrivialStrategy(topOfBookBuffer, [](md::itch::types::timestamp_t) {});
+    return strategies::TrivialStrategy(topOfBookBuffer);
   };
 
   if constexpr (SingleThreaded) {
     auto strategy = createStrategy("QQQ");
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
-      /*if (i % 64 == 0) */strategy.onUpdate();
+      /*if (i % 64 == 0) */ strategy.onUpdate();
     }
     std::cout << "Strategy and simulation done:" << std::endl;
-    strategy.getDiagnostics().print();
+    auto const diagnostics = strategy.getDiagnostics();
+    diagnostics.print();
+    diagnostics.save("diagnostics/ST_QQQ.json");
+
   } else {
     std::atomic<bool> running = true;
 
@@ -183,22 +177,25 @@ void f(int numIters) try {
     };
 
     auto pool = exec::static_thread_pool(5);
+    auto const& sched = pool.get_scheduler();
 
-    auto work = stdexec::when_all(
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<0>) | stdexec::then([&] { return strategyLoop("QQQ"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<1>) | stdexec::then([&] { return strategyLoop("SPY"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<2>) | stdexec::then([&] { return strategyLoop("AMD"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<3>) | stdexec::then([&] { return strategyLoop("IWM"); }),
-        stdexec::schedule(pool.get_scheduler()) | stdexec::then(pin_to_core<4>) | stdexec::then(simulatorLoop));
+    using namespace stdexec;
 
-    auto diagnostics = stdexec::sync_wait(std::move(work)).value();
+    auto work = when_all(
+        schedule(sched) | then(pin_to_core<0>) | then([&] { return strategyLoop("QQQ"); }) | then([&](auto const& d) { d.save("diagnostics/MT_QQQ.json"); return d; }),
+        schedule(sched) | then(pin_to_core<1>) | then([&] { return strategyLoop("SPY"); }) | then([&](auto const& d) { d.save("diagnostics/MT_SPY.json"); return d; }),
+        schedule(sched) | then(pin_to_core<2>) | then([&] { return strategyLoop("AMD"); }) | then([&](auto const& d) { d.save("diagnostics/MT_AMD.json"); return d; }),
+        schedule(sched) | then(pin_to_core<3>) | then([&] { return strategyLoop("IWM"); }) | then([&](auto const& d) { d.save("diagnostics/MT_IWM.json"); return d; }),
+        schedule(sched) | then(pin_to_core<4>) | then(simulatorLoop));
+
+    auto diagnostics = sync_wait(std::move(work)).value();
 
     std::cout << "Done!" << std::endl;
 
-    auto f = [](auto const& accum, size_t i) {
-       std::cout << "Diagnostics " << i << ":\n";
-       accum.print();
-       std::cout << '\n';
+    auto f = [](auto const& diagnostics, size_t i) {
+      std::cout << "Diagnostics " << i << ":\n";
+      diagnostics.print();
+      std::cout << '\n';
     };
 
     tuple_map(diagnostics, f);
