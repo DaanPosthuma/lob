@@ -109,6 +109,7 @@ static uint16_t read_locate(char const *src) { return read_two(src); }
 template <>
 struct itch_message<MessageType::SYSEVENT> {
   itch_message(timestamp_t timeStamp, char eventCode) : timeStamp(timeStamp), eventCode(eventCode) {}
+  
   timestamp_t const timeStamp;
   char const eventCode;
   static itch_message parse(char const *ptr) {
@@ -140,8 +141,8 @@ struct itch_message<MessageType::ADD_ORDER> {
         price(__price),
         qty(__qty),
         stock_locate(__stock_locate),
-        buy(__buy) {
-  }
+        buy(__buy) {}
+
   timestamp_t const timestamp;
   oid_t const oid;
   price_t const price;
@@ -159,6 +160,7 @@ template <>
 struct itch_message<MessageType::ADD_ORDER_MPID> {
   using add_order_t = itch_message<MessageType::ADD_ORDER>;
   itch_message(add_order_t const __base) : add_msg(__base) {}
+
   add_order_t const add_msg;
   static itch_message parse(char const *ptr) {
     return itch_message(add_order_t::parse(ptr));
@@ -168,8 +170,8 @@ struct itch_message<MessageType::ADD_ORDER_MPID> {
 template <>
 struct itch_message<MessageType::EXECUTE_ORDER> {
   itch_message(oid_t __oid, timestamp_t __t, qty_t __q, uint16_t __s)
-      : oid(__oid), timestamp(__t), qty(__q), stock_locate(__s) {
-  }
+      : oid(__oid), timestamp(__t), qty(__q), stock_locate(__s) {}
+
   oid_t const oid;
   timestamp_t const timestamp;
   qty_t const qty;
@@ -184,6 +186,7 @@ template <>
 struct itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE> {
   using execute_order_t = itch_message<MessageType::EXECUTE_ORDER>;
   itch_message(execute_order_t const __base) : exec(__base) {}
+
   execute_order_t const exec;
   static itch_message parse(char const *ptr) {
     return itch_message(execute_order_t::parse(ptr));
@@ -192,21 +195,23 @@ struct itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE> {
 
 template <>
 struct itch_message<MessageType::REDUCE_ORDER> {
-  itch_message(oid_t __o, timestamp_t __t, qty_t __q)
-      : oid(__o), timestamp(__t), qty(__q) {
-  }
+  itch_message(oid_t __o, timestamp_t __t, qty_t __q, uint16_t __s)
+      : oid(__o), timestamp(__t), qty(__q), stock_locate(__s) {}
+
   oid_t const oid;
   timestamp_t const timestamp;
   qty_t const qty;
+  uint16_t const stock_locate;
   static itch_message parse(char const *ptr) {
     return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5),
-                        read_qty(ptr + 19));
+                        read_qty(ptr + 19), read_locate(ptr + 1));
   }
 };
 
 template <>
 struct itch_message<MessageType::DELETE_ORDER> {
   itch_message(oid_t __o, timestamp_t __t, uint16_t __stock_locate) : oid(__o), timestamp(__t), stock_locate(__stock_locate) {}
+
   oid_t const oid;
   timestamp_t const timestamp;
   uint16_t const stock_locate;
@@ -217,17 +222,18 @@ struct itch_message<MessageType::DELETE_ORDER> {
 
 template <>
 struct itch_message<MessageType::REPLACE_ORDER> {
-  itch_message(timestamp_t timestamp, oid_t __old_oid, oid_t __new_oid, qty_t __q, price_t __p)
-      : timestamp(timestamp), oid(__old_oid), new_order_id(__new_oid), new_qty(__q), new_price(__p) {
-  }
+  itch_message(timestamp_t timestamp, oid_t __old_oid, oid_t __new_oid, qty_t __q, price_t __p, uint16_t __stock_locate)
+      : timestamp(timestamp), oid(__old_oid), new_order_id(__new_oid), new_qty(__q), new_price(__p), stock_locate(__stock_locate) {}
+
   timestamp_t timestamp;
   oid_t const oid;
   oid_t const new_order_id;
   qty_t const new_qty;
   price_t const new_price;
+  uint16_t const stock_locate;
   static itch_message parse(char const *ptr) {
     return itch_message(read_timestamp(ptr + 5), read_oid(ptr + 11), read_oid(ptr + 19),
-                        read_qty(ptr + 27), read_price(ptr + 31));
+                        read_qty(ptr + 27), read_price(ptr + 31), read_locate(ptr + 1));
   }
 };
 

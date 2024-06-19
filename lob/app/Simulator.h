@@ -24,17 +24,13 @@ class Simulator {
     auto const marketDataTimestamp = mNextMarketDataEvent.first;
     auto strategyTimestamp = mNextStrategyEvents.empty() ? std::optional<TimestampT>{} : mNextStrategyEvents.top().first;
 
-    /*std::cout << "Next market data event: " << toString(marketDataTimestamp) << '\n';
-    if (strategyTimestamp) std::cout << "Next strategy event:    " << toString(*strategyTimestamp) << '\n';
-    else std::cout << "No next strategy event\n";*/
-
     if (!strategyTimestamp || marketDataTimestamp < *strategyTimestamp) {
-      //std::cout << "Processing market data event " << toString(marketDataTimestamp) << '\n';
+      std::print("Processing market data event {}: ", toString(marketDataTimestamp));
       mNextMarketDataEvent.second();
       mNextMarketDataEvent = mRequestMarketDataEvent();
       return marketDataTimestamp;
     } else {
-      //std::cout << "Processing simulation event " << toString(*strategyTimestamp) << '\n';
+      std::print("Processing simulation data event {}: ", toString(*strategyTimestamp));
       mNextStrategyEvents.top().second();
       mNextStrategyEvents.pop();
       return *strategyTimestamp;

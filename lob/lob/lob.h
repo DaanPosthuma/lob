@@ -4,6 +4,8 @@
 #include <boost/unordered_map.hpp>
 #include <cassert>
 #include <functional>
+#include <iostream>
+#include <iterator>
 #include <list>
 #include <map>
 #include <print>
@@ -156,6 +158,17 @@ class LevelOrders {
     mOrders.erase(it);
   }
 
+  auto timePriority(std::list<LimitOrder<Precision>>::const_iterator it) const {
+    return std::pair(mOrders.size(), std::distance(it, mOrders.end()));
+  }
+
+  void print() const {
+    std::println("depth: {}. num orders: {}", mDepth, mOrders.size());
+    for (auto const& order : mOrders) {
+      std::println("[{}, {}]", (int)order.orderId(), order.size());
+    }
+  }
+
   void reduce(int oldSize, int newSize) {
     mDepth += newSize - oldSize;
   }
@@ -248,7 +261,7 @@ class LimitOrderBook {
     auto& side = direction == Direction::Sell ? mAsk : mBid;
 
     if (newLevel == oldLevel) {
-      //std::println("replaceOrder: new level same as the old one! client probably should have reduced (partially cancelled) order to retain time priority. Or is this case handled as a reduce by the exchange?");
+      // std::println("replaceOrder: new level same as the old one! client probably should have reduced (partially cancelled) order to retain time priority. Or is this case handled as a reduce by the exchange?");
     }
 
     side[oldLevel].remove(orderIt);
@@ -267,6 +280,22 @@ class LimitOrderBook {
     auto const orderIt = it->second;
     auto const level = orderIt->level();
     auto& side = orderIt->direction() == Direction::Sell ? mAsk : mBid;
+
+    auto const bs = orderIt->direction() == Direction::Sell ? 'S' : 'B';
+
+    if (level != side.rbegin()->first) {
+      std::println("Executing {}, but it's not the best price (bs: {})", (int)orderId, bs);
+      std::println("best level: {}. ", static_cast<int>(side.rbegin()->first), static_cast<double>(side.rbegin()->first));
+      std::print("level: {} ({}). ", static_cast<int>(level), static_cast<double>(level));
+      std::cout << *this << std::endl;
+    }
+
+    
+    if (auto [total, priority] = side[level].timePriority(orderIt); priority != 1) {
+      std::println("Executing {}, but not best time priority (priority: {}, total: {}, bs: {})", (int)orderId, priority, total, bs);
+      std::print("level: {} ({}). ", static_cast<int>(level), static_cast<double>(level));
+      side[level].print();
+    }
 
     if (orderIt->size() == size) {
       side[level].remove(orderIt);

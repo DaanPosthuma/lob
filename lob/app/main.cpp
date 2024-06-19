@@ -57,13 +57,13 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
       case md::itch::messages::MessageType::REPLACE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REPLACE_ORDER>(reader);
         return {msg.timestamp, [msg, &replaceOrder] {
-                  replaceOrder(msg.oid, msg.new_order_id, msg.new_qty, msg.new_price);
+                  replaceOrder(msg.stock_locate, msg.oid, msg.new_order_id, msg.new_qty, msg.new_price);
                 }};
       }
       case md::itch::messages::MessageType::REDUCE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REDUCE_ORDER>(reader);
         return {msg.timestamp, [msg, &reduceOrder] {
-                  reduceOrder(msg.oid, msg.qty);
+                  reduceOrder(msg.stock_locate, msg.oid, msg.qty);
                 }};
         break;
       }
@@ -110,25 +110,27 @@ void f(int numIters) try {
 
   auto books = boost::unordered_map<int, LobT>{};
   auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>>{};
-  auto stockLocateByOid = boost::unordered_map<md::itch::types::oid_t, int>{};
 
-  auto addOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid, auto buy, auto qty, auto price) {
+  topOfBookBuffers[symbols.byName("QQQ")];
+  topOfBookBuffers[symbols.byName("SPY")];
+  topOfBookBuffers[symbols.byName("AMD")];
+  topOfBookBuffers[symbols.byName("IWM")];
+
+  auto addOrder = [&books, &topOfBookBuffers](auto stockLocate, auto oid, auto buy, auto qty, auto price) {
     auto& book = books[stockLocate];
     auto before = book.top();
     book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
-    // std::println("Added order {}. Size: {}", oid, (int)qty);
-    stockLocateByOid[oid] = stockLocate;
+    std::println("Added order {}. Size: {}", oid, (int)qty);
     if (before != book.top()) {
       topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
   };
 
-  auto deleteOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid) {
+  auto deleteOrder = [&books, &topOfBookBuffers](auto stockLocate, auto oid) {
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].deleteOrder(toOrderId(oid))) {
-      stockLocateByOid.erase(oid);
-      // std::println("Deleted order {}", oid);
+      std::println("Deleted order {}", oid);
     } else {
       throw std::runtime_error(std::format("Could not delete order {}", oid));
     }
@@ -137,14 +139,11 @@ void f(int numIters) try {
     }
   };
 
-  auto replaceOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto oid, auto newOid, auto newQty, auto newPrice) {
-    auto stockLocate = stockLocateByOid[oid];
+  auto replaceOrder = [&books, &topOfBookBuffers](auto stockLocate, auto oid, auto newOid, auto newQty, auto newPrice) {
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].replaceOrder(toOrderId(oid), toOrderId(newOid), toInt(newQty), toLevel<LobT::Precision>(newPrice))) {
-      stockLocateByOid.erase(oid);
-      stockLocateByOid[newOid] = stockLocate;
-      // std::println("Replaced order {} with {}", oid, newOid);
+      std::println("Replaced order {} with {}", oid, newOid);
     } else {
       throw std::runtime_error(std::format("Could not replace order {} with {}", oid, newOid));
     }
@@ -153,13 +152,11 @@ void f(int numIters) try {
     }
   };
 
-  auto reduceOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto oid, auto qty) {
-    if (!stockLocateByOid.contains(oid)) throw std::runtime_error(std::format("stockLocateByOid does not contain {}", oid));
-    auto stockLocate = stockLocateByOid.at(oid);
+  auto reduceOrder = [&books, &topOfBookBuffers](auto stockLocate, auto oid, auto qty) {
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].reduceOrder(toOrderId(oid), toInt(qty))) {
-      // std::println("Reduced order {} by {}", oid, (int)qty);
+      std::println("Reduced order {} by {}", oid, (int)qty);
     } else {
       throw std::runtime_error(std::format("Could not reduce order {} in book!!", oid, stockLocate));
     }
@@ -168,16 +165,15 @@ void f(int numIters) try {
     }
   };
 
-  auto executeOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid, auto qty) {
+  auto executeOrder = [&books, &topOfBookBuffers](auto stockLocate, auto oid, auto qty) {
     auto& book = books[stockLocate];
     auto before = book.top();
     switch (books[stockLocate].executeOrder(toOrderId(oid), toInt(qty))) {
       case lob::ExecuteOrderResult::FULL:
-        stockLocateByOid.erase(oid);
-        // std::println("Executed order {} (full: {})", oid, (int)qty);
+        std::println("Executed order {} (full: {})", oid, (int)qty);
         break;
       case lob::ExecuteOrderResult::PARTIAL:
-        // std::println("Executed order {} (partial: {})", oid, (int)qty);
+        std::println("Executed order {} (partial: {})", oid, (int)qty);
         break;
       case lob::ExecuteOrderResult::ERROR:
         throw std::runtime_error(std::format("Could not execute order {} (qty: {})", oid, (int)qty));
@@ -195,9 +191,9 @@ void f(int numIters) try {
 
   using namespace std::chrono_literals;
 
-  auto createStrategy = [&](std::string const& symbolName) {
+  auto createStrategy = [&symbols=std::as_const(symbols), &topOfBookBuffers=std::as_const(topOfBookBuffers)](std::string const& symbolName) {
     auto const id = symbols.byName(symbolName);
-    auto const& topOfBookBuffer = topOfBookBuffers[id];
+    auto const& topOfBookBuffer = topOfBookBuffers.at(id);
     return strategies::TrivialStrategy(topOfBookBuffer);
   };
 
@@ -241,10 +237,10 @@ void f(int numIters) try {
     namespace ex = stdexec;
 
     auto work = ex::when_all(
-        ex::schedule(sched) | ex::then(pin_to_core<0>) | ex::then([&] { return strategyLoop("QQQ"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_QQQ.json"); return d; }),
-        ex::schedule(sched) | ex::then(pin_to_core<1>) | ex::then([&] { return strategyLoop("SPY"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_SPY.json"); return d; }),
-        ex::schedule(sched) | ex::then(pin_to_core<2>) | ex::then([&] { return strategyLoop("AMD"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_AMD.json"); return d; }),
-        ex::schedule(sched) | ex::then(pin_to_core<3>) | ex::then([&] { return strategyLoop("IWM"); }) | ex::then([&](auto const& d) { d.save("diagnostics/MT_IWM.json"); return d; }),
+        ex::schedule(sched) | ex::then(pin_to_core<0>) | ex::then([&] { return strategyLoop("QQQ"); }) /*| ex::then([&](auto const& d) { d.save("diagnostics/MT_QQQ.json"); return d; })*/,
+        ex::schedule(sched) | ex::then(pin_to_core<1>) | ex::then([&] { return strategyLoop("SPY"); }) /*| ex::then([&](auto const& d) { d.save("diagnostics/MT_SPY.json"); return d; })*/,
+        ex::schedule(sched) | ex::then(pin_to_core<2>) | ex::then([&] { return strategyLoop("AMD"); }) /*| ex::then([&](auto const& d) { d.save("diagnostics/MT_AMD.json"); return d; })*/,
+        ex::schedule(sched) | ex::then(pin_to_core<3>) | ex::then([&] { return strategyLoop("IWM"); }) /*| ex::then([&](auto const& d) { d.save("diagnostics/MT_IWM.json"); return d; })*/,
         ex::schedule(sched) | ex::then(pin_to_core<4>) | ex::then(simulatorLoop));
 
     auto diagnostics = ex::sync_wait(std::move(work)).value();
@@ -276,11 +272,11 @@ int main() {
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
-  {
+  /*{
     std::println("Multi-threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
     f<false>(numIters);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-  }
+  }*/
 }
