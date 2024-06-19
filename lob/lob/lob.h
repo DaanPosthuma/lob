@@ -4,11 +4,12 @@
 #include <boost/unordered_map.hpp>
 #include <cassert>
 #include <functional>
-#include <iostream>
 #include <list>
 #include <map>
+#include <print>
 #include <ranges>
-#include <shared_mutex>
+
+namespace lob {
 
 template <class... Args>
 using MapT = std::map<Args...>;
@@ -18,7 +19,26 @@ template <class... Args>
 using UnorderedMapT = boost::unordered_map<Args...>;
 // using UnorderedMapT = std::unordered_map<Args...>;
 
-namespace lob {
+enum class ExecuteOrderResult {
+  PARTIAL,
+  FULL,
+  ERROR
+};
+
+std::ostream& operator<<(std::ostream& out, ExecuteOrderResult result) {
+  switch (result) {
+    case ExecuteOrderResult::PARTIAL:
+      out << "ExecuteOrderResult::PARTIAL";
+      break;
+    case ExecuteOrderResult::FULL:
+      out << "ExecuteOrderResult::FULL";
+      break;
+    case ExecuteOrderResult::ERROR:
+      out << "ExecuteOrderResult::ERROR";
+      break;
+  }
+  return out;
+}
 
 class OrderId {
  public:
@@ -46,12 +66,13 @@ class OrderId {
   int mId;
 };
 
-template <int Precision>
-struct PrecisionMultiplier {};
+consteval int ipow(int num, int pow) {
+  return pow == 0 ? 1 : num * ipow(num, pow - 1);
+}
 
-template <>
-struct PrecisionMultiplier<4> {
-  static constexpr double value = 1 / 10000.;
+template <int Precision>
+struct PrecisionMultiplier {
+  static constexpr double value = 1.0 / ipow(10, Precision);
 };
 
 template <int Precision>
@@ -109,10 +130,11 @@ class LimitOrder {
   using LevelT = Level<Precision>;
   constexpr LimitOrder(int size, Direction direction, LevelT level, OrderId orderId) : mSize(size), mDirection(direction), mLevel(level), mOrderId(orderId) {}
 
-  constexpr auto size() const noexcept { return mSize; }
-  constexpr auto direction() const noexcept { return mDirection; }
-  constexpr auto level() const noexcept { return mLevel; }
-  constexpr auto orderId() const noexcept { return mOrderId; }
+  [[nodiscart]] constexpr auto size() const noexcept { return mSize; }
+  [[nodiscart]] constexpr auto direction() const noexcept { return mDirection; }
+  [[nodiscart]] constexpr auto level() const noexcept { return mLevel; }
+  [[nodiscart]] constexpr auto orderId() const noexcept { return mOrderId; }
+  constexpr auto setSize(int size) noexcept { mSize = size; }
 
  private:
   int mSize;
@@ -128,14 +150,22 @@ class LevelOrders {
     mDepth += size;
     return mOrders.emplace(mOrders.begin(), size, direction, level, orderId);
   }
+
   void remove(std::list<LimitOrder<Precision>>::iterator it) {
     mDepth -= it->size();
     mOrders.erase(it);
   }
+
+  void reduce(int oldSize, int newSize) {
+    mDepth += newSize - oldSize;
+  }
+
   [[nodiscard]] auto empty() const noexcept { return mOrders.empty(); }
+
   auto& oldest() {
     return *mOrders.rbegin();
   }
+
   void deleteOldest() {
     mDepth -= mOrders.back().size();
     mOrders.pop_back();
@@ -168,8 +198,6 @@ class LimitOrderBook {
     auto it = (direction == Direction::Sell ? mAsk : mBid)[level].add(size, direction, level, orderId);
     mOrders.emplace(orderId, it);
 
-    updateTop(); // todo: only update when best bid or lowest ask is affected
-
     return orderId;
   }
 
@@ -184,9 +212,76 @@ class LimitOrderBook {
     if (side[level].empty()) side.erase(level);
     mOrders.erase(it);
 
-    updateTop(); // todo: only update when best bid or lowest ask is changed
+    return true;
+  }
+
+  bool reduceOrder(const OrderId orderId, int numCancelled) {
+    auto const it = mOrders.find(orderId);
+    if (it == mOrders.end()) return false;
+
+    auto const orderIt = it->second;
+
+    auto const newSize = orderIt->size() - numCancelled;
+    if (newSize <= 0) {
+      throw std::runtime_error(std::format("reduceOrder: Reduced level to {}!", newSize));
+    }
+
+    auto const level = orderIt->level();
+    auto& side = orderIt->direction() == Direction::Sell ? mAsk : mBid;
+    side[level].reduce(orderIt->size(), newSize);
+    orderIt->setSize(newSize);
 
     return true;
+  }
+
+  bool replaceOrder(const OrderId orderId, const OrderId newOrderId, int newSize, const LevelT newLevel) {
+    if (newSize == 0) {
+      throw std::runtime_error("replaceOrder: new size is 0!");
+    }
+    auto const it = mOrders.find(orderId);
+    if (it == mOrders.end()) return false;
+
+    auto const orderIt = it->second;
+    auto const oldLevel = orderIt->level();
+    auto const direction = orderIt->direction();
+
+    auto& side = direction == Direction::Sell ? mAsk : mBid;
+
+    if (newLevel == oldLevel) {
+      //std::println("replaceOrder: new level same as the old one! client probably should have reduced (partially cancelled) order to retain time priority. Or is this case handled as a reduce by the exchange?");
+    }
+
+    side[oldLevel].remove(orderIt);
+    if (side[oldLevel].empty()) side.erase(oldLevel);
+    mOrders.erase(it);
+
+    addOrder(newOrderId, direction, newSize, newLevel);
+
+    return true;
+  }
+
+  ExecuteOrderResult executeOrder(const OrderId orderId, int size) {
+    auto const it = mOrders.find(orderId);
+    if (it == mOrders.end()) return ExecuteOrderResult::ERROR;
+
+    auto const orderIt = it->second;
+    auto const level = orderIt->level();
+    auto& side = orderIt->direction() == Direction::Sell ? mAsk : mBid;
+
+    if (orderIt->size() == size) {
+      side[level].remove(orderIt);
+      if (side[level].empty()) side.erase(level);
+      mOrders.erase(it);
+      return ExecuteOrderResult::FULL;
+    } else {
+      auto newSize = orderIt->size() - size;
+      if (newSize < 0) {
+        throw std::runtime_error(std::format("executeOrder: Reduced level to {}!", newSize));
+      }
+      side[level].reduce(orderIt->size(), newSize);
+      orderIt->setSize(newSize);
+      return ExecuteOrderResult::PARTIAL;
+    }
   }
 
   [[nodiscard]] auto hasBids() const noexcept {
@@ -223,76 +318,27 @@ class LimitOrderBook {
   };
 
   [[nodiscard]] auto top() const noexcept {
-    return mTop;
-  }
-
-  [[nodiscard]] auto updateTop() noexcept {
+    TopOfBook top{};
     if (hasBids()) {
-      mTop.bid = bid();
-      mTop.bidDepth = bidDepth();
+      top.bid = bid();
+      top.bidDepth = bidDepth();
     }
     if (hasAsks()) {
-      mTop.ask = ask();
-      mTop.askDepth = askDepth();
+      top.ask = ask();
+      top.askDepth = askDepth();
     }
+    return top;
   }
-
-  /*void PlaceMarketOrder(const Direction direction, const int size)
-  {
-    //std::print("MO (direction={}, size={})", direction, size);
-
-    auto& orders = direction == Direction::Sell ? mBid : mAsk;
-
-    int outstanding = size;
-    double averagePrice = 0;
-
-    while (outstanding > 0)
-    {
-      auto max = orders.rbegin()->first;
-      while (orders[max].empty())
-      {
-        orders.erase(max);
-        max = orders.rbegin()->first;
-      }
-      auto& ordersForLevel = orders.rbegin()->second;
-
-      const auto& order = ordersForLevel.oldest();
-
-      if (order.GetSize() <= outstanding)
-      {
-        //std::cout << "(Partial) fill" << std::endl;
-        outstanding -= order.GetSize();
-        averagePrice += order.GetSize() * max * PrecisionMultiplier<Precision>::value / size;
-        //order.print();
-
-        ordersForLevel.deleteOldest();
-      }
-      else if (order.GetSize() > outstanding)
-      {
-        //std::cout << "Next LO is larger than MO" << std::endl;
-        //order.print();
-        const auto amended = order.createSizeAmendedOrder(order.GetSize() - outstanding);
-        //std::cout << "Amended:" << std::endl;
-        //amended.print();
-        ordersForLevel.oldest() = amended;
-        averagePrice += outstanding * max * PrecisionMultiplier<Precision>::value / size;
-        outstanding = 0;
-
-      }
-    }
-    std::cout << "Done, effective price: " << averagePrice << std::endl;
-  }*/
 
  private:
   UnorderedMapT<OrderId, typename std::list<LimitOrder<Precision>>::iterator> mOrders;
   MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mBid;
   MapT<LevelT, LevelOrders<Precision>, std::function<bool(LevelT, LevelT)>> mAsk;
-  TopOfBook mTop = {};
 
   inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBook const& book) noexcept {
     ostr << "[ LimitOrderBook begin ]" << std::endl;
     ostr << "Orders: ";
-    std::ranges::for_each(book.mOrders | std::views::keys, [first = true](auto orderId) mutable { std::cout << (first ? "" : ",") << orderId; first = false; });
+    std::ranges::for_each(book.mOrders | std::views::keys, [&ostr, first = true](auto orderId) mutable { ostr << (first ? "" : ",") << orderId; first = false; });
 
     ostr << std::endl;
     ostr << "Bids: " << std::endl;
@@ -306,63 +352,6 @@ class LimitOrderBook {
     ostr << "[ LimitOrderBook end ]" << std::endl;
     return ostr;
   }
-};
-
-template <int Precision>
-class LimitOrderBookWithLocks : private LimitOrderBook<Precision> {
- public:
-  using LevelT = LimitOrderBook<Precision>::LevelT;
-  OrderId addOrder(const OrderId orderId, const Direction direction, const int size, const LevelT level) {
-    std::unique_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::addOrder(orderId, direction, size, level);
-  }
-
-  bool deleteOrder(const OrderId orderId) {
-    std::unique_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::deleteOrder(orderId);
-  }
-
-  [[nodiscard]] auto hasBids() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::hasBids();
-  }
-
-  [[nodiscard]] auto hasAsks() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::hasAsks();
-  }
-
-  [[nodiscard]] auto bid() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::bid();
-  }
-
-  [[nodiscard]] auto ask() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::ask();
-  }
-
-  [[nodiscard]] int bidDepth() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::bidDepth();
-  }
-
-  [[nodiscard]] int askDepth() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::askDepth();
-  }
-
-  [[nodiscard]] auto top() const noexcept {
-    std::shared_lock const lock(mMutex);
-    return LimitOrderBook<Precision>::top();
-  }
-
-  inline friend std::ostream& operator<<(std::ostream& ostr, LimitOrderBookWithLocks const& book) {
-    return ostr << static_cast<LimitOrderBook<Precision>>(book);
-  }
-
- private:
-  mutable std::shared_mutex mMutex;
 };
 
 }  // namespace lob

@@ -4,13 +4,14 @@
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
 #include <md/itch/MessageReaders.h>
-#include <md/itch/TypeConverterss.h>
+#include <md/itch/TypeConverters.h>
+#include <md/itch/TypeFormatters.h>
 
 #include <boost/unordered_map.hpp>
 #include <chrono>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <iostream>
+#include <print>
 #include <stdexec/execution.hpp>
 #include <utility>
 
@@ -35,7 +36,7 @@ auto getTestFile() {
   return md::MappedFile(filename);
 }
 
-auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder)
+auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, auto const& reduceOrder, auto const& replaceOrder, auto const& executeOrder)
     -> simulator::Simulator<md::itch::types::timestamp_t>::EventT {
   while (reader.remaining() >= 3) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
@@ -44,39 +45,44 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
       case md::itch::messages::MessageType::ADD_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER>(reader);
         return {msg.timestamp, [msg, &addOrder] {
-                  addOrder(msg.timestamp, msg.stock_locate, msg.oid, msg.buy, msg.qty, msg.price);
+                  addOrder(msg.stock_locate, msg.oid, msg.buy, msg.qty, msg.price);
                 }};
       }
       case md::itch::messages::MessageType::ADD_ORDER_MPID: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::ADD_ORDER_MPID>(reader);
-        return {msg.add_msg.timestamp, [msg, &addOrder] {
-                  addOrder(msg.add_msg.timestamp, msg.add_msg.stock_locate, msg.add_msg.oid, msg.add_msg.buy, msg.add_msg.qty, msg.add_msg.price);
+        return {msg.add_msg.timestamp, [msg = msg.add_msg, &addOrder] {
+                  addOrder(msg.stock_locate, msg.oid, msg.buy, msg.qty, msg.price);
                 }};
       }
       case md::itch::messages::MessageType::REPLACE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REPLACE_ORDER>(reader);
-        // std::cout << toString(msg.timestamp) << " Todo: replace order " << (int)msg.oid << " with " << (int)msg.new_order_id << std::endl;
-        break;
+        return {msg.timestamp, [msg, &replaceOrder] {
+                  replaceOrder(msg.oid, msg.new_order_id, msg.new_qty, msg.new_price);
+                }};
       }
       case md::itch::messages::MessageType::REDUCE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::REDUCE_ORDER>(reader);
-        // std::cout << toString(msg.timestamp) << " Todo: reduce order " << (int)msg.oid << std::endl;
+        return {msg.timestamp, [msg, &reduceOrder] {
+                  reduceOrder(msg.oid, msg.qty);
+                }};
         break;
       }
       case md::itch::messages::MessageType::EXECUTE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::EXECUTE_ORDER>(reader);
-        // std::cout << toString(msg.timestamp) << " Todo: execute order " << (int)msg.oid << std::endl;
-        break;
+        return {msg.timestamp, [msg, &executeOrder] {
+                  executeOrder(msg.stock_locate, msg.oid, msg.qty);
+                }};
       }
       case md::itch::messages::MessageType::EXECUTE_ORDER_WITH_PRICE: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::EXECUTE_ORDER_WITH_PRICE>(reader);
-        // std::cout << toString(msg.exec.timestamp) << " Todo: execute order " << (int)msg.exec.oid << " with price " << std::endl;
-        break;
+        return {msg.exec.timestamp, [msg = msg.exec, &executeOrder] {
+                  executeOrder(msg.stock_locate, msg.oid, msg.qty);
+                }};
       }
       case md::itch::messages::MessageType::DELETE_ORDER: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::DELETE_ORDER>(reader);
         return {msg.timestamp, [msg, &deleteOrder] {
-                  deleteOrder(msg.timestamp, msg.stock_locate, msg.oid);
+                  deleteOrder(msg.stock_locate, msg.oid);
                 }};
       }
       default:
@@ -93,43 +99,96 @@ void f(int numIters) try {
   using LobT = lob::LimitOrderBook<4>;
   // using LobT = lob::LimitOrderBookWithLocks<4>;
 
-  std::cout << "Loading test file..." << std::endl;
+  std::println("Loading test file...");
 
   auto const file = getTestFile();
   auto reader = md::BinaryDataReader(file.data(), file.size());
 
   auto const symbols = md::utils::Symbols(reader);
 
-  std::cout << "Loaded " << symbols.count() << " symbols" << std::endl;
+  std::println("Loaded {} symbols", symbols.count());
 
   auto books = boost::unordered_map<int, LobT>{};
   auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>>{};
+  auto stockLocateByOid = boost::unordered_map<md::itch::types::oid_t, int>{};
 
-  auto addOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid, auto buy, auto qty, auto price) {
-    auto& book = books[stock_locate];
+  auto addOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid, auto buy, auto qty, auto price) {
+    auto& book = books[stockLocate];
     auto before = book.top();
     book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
+    // std::println("Added order {}. Size: {}", oid, (int)qty);
+    stockLocateByOid[oid] = stockLocate;
     if (before != book.top()) {
-      topOfBookBuffers[stock_locate].push({std::chrono::high_resolution_clock::now(), book.top()});
+      topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
-    // std::cout << toString(timestamp) << " Added order " << (int)oid << " to book " << stock_locate << std::endl;
   };
 
-  auto deleteOrder = [&books, &topOfBookBuffers](auto timestamp, auto stock_locate, auto oid) {
-    auto& book = books[stock_locate];
+  auto deleteOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid) {
+    auto& book = books[stockLocate];
     auto before = book.top();
-    if (books[stock_locate].deleteOrder(toOrderId(oid))) {
-      // std::cout << toString(msg.timestamp) << " Deleted order " << (int)msg.oid << " from book " << msg.stock_locate << "!" << std::endl;
+    if (books[stockLocate].deleteOrder(toOrderId(oid))) {
+      stockLocateByOid.erase(oid);
+      // std::println("Deleted order {}", oid);
     } else {
-      // std::cout << toString(msg.timestamp) << " Could not delete order " << (int)msg.oid << " from book " << msg.stock_locate << std::endl;
+      throw std::runtime_error(std::format("Could not delete order {}", oid));
     }
     if (before != book.top()) {
-      topOfBookBuffers[stock_locate].push({std::chrono::high_resolution_clock::now(), book.top()});
+      topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
   };
 
-  auto getNextMarketDataEvent = [&reader, &addOrder, &deleteOrder] {
-    return ::getNextMarketDataEvent(reader, addOrder, deleteOrder);
+  auto replaceOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto oid, auto newOid, auto newQty, auto newPrice) {
+    auto stockLocate = stockLocateByOid[oid];
+    auto& book = books[stockLocate];
+    auto before = book.top();
+    if (books[stockLocate].replaceOrder(toOrderId(oid), toOrderId(newOid), toInt(newQty), toLevel<LobT::Precision>(newPrice))) {
+      stockLocateByOid.erase(oid);
+      stockLocateByOid[newOid] = stockLocate;
+      // std::println("Replaced order {} with {}", oid, newOid);
+    } else {
+      throw std::runtime_error(std::format("Could not replace order {} with {}", oid, newOid));
+    }
+    if (before != book.top()) {
+      topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
+    }
+  };
+
+  auto reduceOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto oid, auto qty) {
+    if (!stockLocateByOid.contains(oid)) throw std::runtime_error(std::format("stockLocateByOid does not contain {}", oid));
+    auto stockLocate = stockLocateByOid.at(oid);
+    auto& book = books[stockLocate];
+    auto before = book.top();
+    if (books[stockLocate].reduceOrder(toOrderId(oid), toInt(qty))) {
+      // std::println("Reduced order {} by {}", oid, (int)qty);
+    } else {
+      throw std::runtime_error(std::format("Could not reduce order {} in book!!", oid, stockLocate));
+    }
+    if (before != book.top()) {
+      topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
+    }
+  };
+
+  auto executeOrder = [&books, &topOfBookBuffers, &stockLocateByOid](auto stockLocate, auto oid, auto qty) {
+    auto& book = books[stockLocate];
+    auto before = book.top();
+    switch (books[stockLocate].executeOrder(toOrderId(oid), toInt(qty))) {
+      case lob::ExecuteOrderResult::FULL:
+        stockLocateByOid.erase(oid);
+        // std::println("Executed order {} (full: {})", oid, (int)qty);
+        break;
+      case lob::ExecuteOrderResult::PARTIAL:
+        // std::println("Executed order {} (partial: {})", oid, (int)qty);
+        break;
+      case lob::ExecuteOrderResult::ERROR:
+        throw std::runtime_error(std::format("Could not execute order {} (qty: {})", oid, (int)qty));
+    }
+    if (before != book.top()) {
+      topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
+    }
+  };
+
+  auto getNextMarketDataEvent = [&reader, &addOrder, &deleteOrder, &reduceOrder, &replaceOrder, &executeOrder] {
+    return ::getNextMarketDataEvent(reader, addOrder, deleteOrder, reduceOrder, replaceOrder, executeOrder);
   };
 
   auto simulator = simulator::Simulator<md::itch::types::timestamp_t>{getNextMarketDataEvent};
@@ -148,7 +207,7 @@ void f(int numIters) try {
       auto timestamp = simulator.step();
       /*if (i % 64 == 0) */ strategy.onUpdate();
     }
-    std::cout << "Strategy and simulation done:" << std::endl;
+    std::println("Strategy and simulation done:");
     auto const diagnostics = strategy.getDiagnostics();
     diagnostics.print();
     diagnostics.save("diagnostics/ST_QQQ.json");
@@ -162,11 +221,11 @@ void f(int numIters) try {
       for (int i : std::views::iota(0, numIters)) {
         simulator.step();
       }
-      std::cout << "Simulation done." << std::endl;
+      std::println("Simulation done.");
       stopSource.request_stop();
     };
 
-    auto const strategyLoop = [&createStrategy, st=stopSource.get_token()](std::string const& symbolName) {
+    auto const strategyLoop = [&createStrategy, st = stopSource.get_token()](std::string const& symbolName) {
       auto strategy = createStrategy(symbolName);
       while (!st.stop_requested()) {
         for (int i = 0; i != 10000; ++i) {
@@ -190,38 +249,38 @@ void f(int numIters) try {
 
     auto diagnostics = ex::sync_wait(std::move(work)).value();
 
-    std::cout << "Done!" << std::endl;
+    std::println("Done!");
 
     auto f = [](auto const& diagnostics, size_t i) {
-      std::cout << "Diagnostics " << i << ":\n";
+      std::println("Diagnostics {}:", i);
       diagnostics.print();
-      std::cout << '\n';
+      std::println("");
     };
 
     tuple_map(diagnostics, f);
   }
 
 } catch (std::exception const& ex) {
-  std::cout << "Exception: " << ex.what() << std::endl;
+  std::println("Exception: {}", ex.what());
 } catch (...) {
-  std::cout << "Unknown exception" << std::endl;
+  std::println("Unknown exception");
 }
 
 int main() {
   auto const numIters = 10000000;
   {
-    std::cout << "Single thread:\n";
+    std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
     f<true>(numIters);
     auto const end = std::chrono::high_resolution_clock::now();
-    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " millis.\n\n";
+    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
   {
-    std::cout << "Multi-threaded:\n";
+    std::println("Multi-threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
     f<false>(numIters);
     auto const end = std::chrono::high_resolution_clock::now();
-    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " millis.\n\n";
+    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 }

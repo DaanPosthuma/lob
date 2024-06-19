@@ -92,23 +92,11 @@ inline constexpr unsigned char netlen<MessageType::PROCESS_LULD_AUCTION_COLLAR_M
 
 template <MessageType messageType>
 struct itch_message {
-  // static constexpr MessageType code = __code;
-  // static constexpr unsigned char network_len = netlen<__code>;
   static itch_message parse(char const *ptr) {
     static_cast<void>(ptr);
     return itch_message();
   }
 };
-
-using sys_event_t = itch_message<MessageType::SYSEVENT>;
-using stock_directory_t = itch_message<MessageType::STOCK_DIRECTORY>;
-using add_order_t = itch_message<MessageType::ADD_ORDER>;
-using add_order_mpid_t = itch_message<MessageType::ADD_ORDER_MPID>;
-using execute_order_t = itch_message<MessageType::EXECUTE_ORDER>;
-using execute_with_price_t = itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE>;
-using order_reduce_t = itch_message<MessageType::REDUCE_ORDER>;
-using order_delete_t = itch_message<MessageType::DELETE_ORDER>;
-using order_replace_t = itch_message<MessageType::REPLACE_ORDER>;
 
 static timestamp_t read_timestamp(char const *src) {
   return timestamp_t(read_six(src));
@@ -124,7 +112,7 @@ struct itch_message<MessageType::SYSEVENT> {
   timestamp_t const timeStamp;
   char const eventCode;
   static itch_message parse(char const *ptr) {
-    return sys_event_t(read_timestamp(ptr + 5), ptr[11]);
+    return itch_message(read_timestamp(ptr + 5), ptr[11]);
   }
 };
 
@@ -139,7 +127,7 @@ struct itch_message<MessageType::STOCK_DIRECTORY> {
   char const marketCategory;
 
   static itch_message parse(char const *ptr) {
-    return stock_directory_t(read_locate(ptr + 1), read_timestamp(ptr + 5), ptr[19], std::string{&ptr[11], 8});
+    return itch_message(read_locate(ptr + 1), read_timestamp(ptr + 5), ptr[19], std::string{&ptr[11], 8});
   }
 };
 
@@ -161,14 +149,15 @@ struct itch_message<MessageType::ADD_ORDER> {
   uint16_t const stock_locate;
   BUY_SELL const buy;
   static itch_message parse(char const *ptr) {
-    return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11),
-                       read_price(ptr + 32), read_qty(ptr + 20),
-                       read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
+    return itch_message(read_timestamp(ptr + 5), read_oid(ptr + 11),
+                        read_price(ptr + 32), read_qty(ptr + 20),
+                        read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
   }
 };
 
 template <>
 struct itch_message<MessageType::ADD_ORDER_MPID> {
+  using add_order_t = itch_message<MessageType::ADD_ORDER>;
   itch_message(add_order_t const __base) : add_msg(__base) {}
   add_order_t const add_msg;
   static itch_message parse(char const *ptr) {
@@ -193,6 +182,7 @@ struct itch_message<MessageType::EXECUTE_ORDER> {
 
 template <>
 struct itch_message<MessageType::EXECUTE_ORDER_WITH_PRICE> {
+  using execute_order_t = itch_message<MessageType::EXECUTE_ORDER>;
   itch_message(execute_order_t const __base) : exec(__base) {}
   execute_order_t const exec;
   static itch_message parse(char const *ptr) {

@@ -8,6 +8,7 @@
 #include <windows.h>
 #undef min
 #undef max
+#undef ERROR
 
 template <DWORD CoreId>
 inline void pin_to_core() {
