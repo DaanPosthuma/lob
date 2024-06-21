@@ -10,7 +10,7 @@ Limit order book. Also contains (naive) ring buffer (based on LMAX Disruptor). T
 Currently only one algorithm that doesn't actually do anything, just reads from the ring buffer. Todo: create some basic algorithms that actually place orders
 
 **lob/simulator:**
-Pulls events from the market data. Also handles strategy simualtion events (place/cancel order). An event is a timestamp + function pair and it calls whichever function has to be executed next (either the market data or the simulation event).
+Pulls events from the market data. Also handles strategy simualtion events (place/cancel order). An event is a timestamp + function pair and it calls whichever function has to be executed next (either the market data or the simulation event). Todo: add OMS simulator that adds simulation events (with appropriate delay) when strategy places an order.
 
 **lob/pymd:**
 Nothing to see here. Was meant to be python interface for market data, but is basically some early experiments with pybind11.
