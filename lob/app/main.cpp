@@ -1,6 +1,9 @@
-﻿#include <md/MappedFile.h>
-#include <print>
+﻿#include <md/BinaryDataReader.h>
+#include <md/MappedFile.h>
+#include <simulator/functions.h>
+
 #include <chrono>
+#include <print>
 
 namespace {
 
@@ -15,25 +18,19 @@ auto getTestFile() {
   return md::MappedFile(filename);
 }
 
-} // namespace
+}  // namespace
 
 int main() {
-  auto file = getTestFile();
-  
-  auto const numIters = 10000000;
+  auto const file = getTestFile();
+  auto reader = md::BinaryDataReader(file.data(), file.size());
+
+  auto const maxNumIters = 10000000;
   {
     std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
-    //f<true>(numIters);
+    simulator::f(reader, maxNumIters);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
-  {
-    std::println("Multi-threaded:");
-    auto const start = std::chrono::high_resolution_clock::now();
-    //f<false>(numIters);
-    auto const end = std::chrono::high_resolution_clock::now();
-    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-  }
 }

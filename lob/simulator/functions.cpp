@@ -1,4 +1,6 @@
-﻿#include <lob/RingBuffer.h>
+﻿#include "functions.h"
+
+#include <lob/RingBuffer.h>
 #include <lob/lob.h>
 #include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
@@ -6,6 +8,7 @@
 #include <md/itch/MessageReaders.h>
 #include <md/itch/TypeConverters.h>
 #include <md/itch/TypeFormatters.h>
+#include <strategies/Strategies.h>
 
 #include <boost/unordered_map.hpp>
 #include <chrono>
@@ -14,20 +17,10 @@
 
 #include "ItchToLobType.h"
 #include "Simulator.h"
-#include "Strategies.h"
 
 namespace {
 
 using namespace std::string_literals;
-
-auto getTestFile() {
-#ifdef _WIN32
-  auto const filename = "C:\\dev\\VS\\lob\\data\\01302019.NASDAQ_ITCH50"s;
-#else
-  auto const filename = "/mnt/itch-data/01302019.NASDAQ_ITCH50";
-#endif
-  return md::MappedFile(filename);
-}
 
 auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, auto const& reduceOrder, auto const& replaceOrder, auto const& executeOrder)
     -> simulator::Simulator<md::itch::types::timestamp_t>::EventT {
@@ -87,15 +80,11 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
 
 }  // namespace
 
-template <bool SingleThreaded>
-void f(int numIters) try {
+void simulator::f(md::BinaryDataReader& reader, int numIters) try {
   using LobT = lob::LimitOrderBook<4>;
   // using LobT = lob::LimitOrderBookWithLocks<4>;
 
   std::println("Loading test file...");
-
-  auto const file = getTestFile();
-  auto reader = md::BinaryDataReader(file.data(), file.size());
 
   auto const symbols = md::utils::Symbols(reader);
 
@@ -184,7 +173,7 @@ void f(int numIters) try {
 
   using namespace std::chrono_literals;
 
-  auto createStrategy = [&symbols=std::as_const(symbols), &topOfBookBuffers=std::as_const(topOfBookBuffers)](std::string const& symbolName) {
+  auto createStrategy = [&symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
     auto const id = symbols.byName(symbolName);
     auto const& topOfBookBuffer = topOfBookBuffers.at(id);
     return strategies::TrivialStrategy(topOfBookBuffer);
@@ -254,22 +243,3 @@ void f(int numIters) try {
 } catch (...) {
   std::println("Unknown exception");
 }
-
-/*int main() {
-  auto const numIters = 10000000;
-  {
-    std::println("Single thread:");
-    auto const start = std::chrono::high_resolution_clock::now();
-    f<true>(numIters);
-    auto const end = std::chrono::high_resolution_clock::now();
-    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-  }
-
-  {
-    std::println("Multi-threaded:");
-    auto const start = std::chrono::high_resolution_clock::now();
-    f<false>(numIters);
-    auto const end = std::chrono::high_resolution_clock::now();
-    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-  }
-}*/
