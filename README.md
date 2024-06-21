@@ -22,7 +22,7 @@ Market data and LOB/ring buffer tests. TODO: move these into md/lob subfolder an
 Executable that invokes all the code. Currently most of the code actually sits in the simulator library (function simulator::f) but this is temporary, I spent some time on refactoring today and haven't finshed this yet. TODO: add Python bindings to be able to dynamically create one or a bunch of strategies, load a market data file (or different source) and execute a strategy.
 
 **Credits:**
-My parser is based on Charles Cooper's (https://github.com/charles-cooper/itch-order-book). Conan setup based on Antony Peacock's (https://github.com/Twon/Morpheus).
+ITCH parser is based on Charles Cooper's (https://github.com/charles-cooper/itch-order-book). Conan setup based on Antony Peacock's (https://github.com/Twon/Morpheus).
 
 **TODO**
 add logger
