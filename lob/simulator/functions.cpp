@@ -6,7 +6,6 @@
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
 #include <md/itch/MessageReaders.h>
-#include <md/itch/TypeConverters.h>
 #include <md/itch/TypeFormatters.h>
 #include <strategies/Strategies.h>
 
@@ -16,7 +15,13 @@
 #include <utility>
 
 #include "ItchToLobType.h"
+#include "PinToCore.h"
 #include "Simulator.h"
+#include "TupleMap.h"
+
+#include <stdexec/execution.hpp>
+#include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
 
 namespace {
 
@@ -80,7 +85,7 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
 
 }  // namespace
 
-void simulator::f(md::BinaryDataReader& reader, int numIters) try {
+void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreaded) try {
   using LobT = lob::LimitOrderBook<4>;
   // using LobT = lob::LimitOrderBookWithLocks<4>;
 
@@ -179,7 +184,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters) try {
     return strategies::TrivialStrategy(topOfBookBuffer);
   };
 
-  /*if constexpr (SingleThreaded) {
+  if (singleThreaded) {
     auto strategy = createStrategy("QQQ");
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
@@ -236,7 +241,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters) try {
     };
 
     tuple_map(diagnostics, f);
-  }*/
+  }
 
 } catch (std::exception const& ex) {
   std::println("Exception: {}", ex.what());

@@ -3,7 +3,6 @@
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
 #include <md/itch/MessageReaders.h>
-#include <md/itch/TypeConverters.h>
 
 #include <ranges>
 
@@ -77,7 +76,7 @@ TEST(ItchReader, StartSysEvents) {
     switch (currentMessageType) {
       case md::itch::messages::MessageType::SYSEVENT: {
         auto const msg = md::itch::readItchMessage<md::itch::messages::MessageType::SYSEVENT>(reader);
-        std::cout << "message " << msgi << " - SYSEVENT: " << toString(msg.timeStamp) << ", " << msg.eventCode << std::endl;
+        std::cout << "message " << msgi << " - SYSEVENT: " << msg.timeStamp << ", " << msg.eventCode << std::endl;
         if (msg.eventCode == 'O')
           startOfMessagesMsgId = msgi;
         else if (msg.eventCode == 'S')

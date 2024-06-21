@@ -28,9 +28,16 @@ int main() {
   {
     std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::f(reader, maxNumIters);
+    simulator::f(reader, maxNumIters, true);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
+  /*{
+    std::println("Multi threaded:");
+    auto const start = std::chrono::high_resolution_clock::now();
+    simulator::f(reader, maxNumIters, false);
+    auto const end = std::chrono::high_resolution_clock::now();
+    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+  }*/
 }

@@ -8,3 +8,4 @@ CMakeUserPresets.json
 *.out
 *.swp
 .ipynb_checkpoints
+*.log

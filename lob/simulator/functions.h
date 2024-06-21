@@ -5,5 +5,5 @@ class BinaryDataReader;
 }
 
 namespace simulator {
-void f(md::BinaryDataReader& reader, int numIters);
+void f(md::BinaryDataReader& reader, int numIters, bool singleThreaded);
 }
