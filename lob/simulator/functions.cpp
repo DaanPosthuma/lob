@@ -23,7 +23,7 @@ namespace {
 using namespace std::string_literals;
 
 auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, auto const& deleteOrder, auto const& reduceOrder, auto const& replaceOrder, auto const& executeOrder)
-    -> simulator::Simulator<md::itch::types::timestamp_t>::EventT {
+    -> simulator::Simulator::EventT {
   while (reader.remaining() >= 3) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
     auto const start = std::chrono::high_resolution_clock::now();
@@ -169,7 +169,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters) try {
     return ::getNextMarketDataEvent(reader, addOrder, deleteOrder, reduceOrder, replaceOrder, executeOrder);
   };
 
-  auto simulator = simulator::Simulator<md::itch::types::timestamp_t>{getNextMarketDataEvent};
+  auto simulator = simulator::Simulator{getNextMarketDataEvent};
 
   using namespace std::chrono_literals;
 

@@ -1,41 +1,20 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
-#include <optional>
 #include <queue>
 #include <vector>
 
 namespace simulator {
 
-template <class TimestampT>
 class Simulator {
  public:
+  using TimestampT = std::chrono::nanoseconds;
   using EventT = std::pair<TimestampT, std::function<void()>>;
-  explicit Simulator(std::function<EventT()> requestMarketDataEvent)
-      : mRequestMarketDataEvent(std::move(requestMarketDataEvent)),
-        mNextMarketDataEvent(mRequestMarketDataEvent()) {
-  }
 
-  void addSimulationEvent(EventT event) {
-    mNextStrategyEvents.emplace(std::move(event));
-  }
-
-  auto step() {
-    auto const marketDataTimestamp = mNextMarketDataEvent.first;
-    auto strategyTimestamp = mNextStrategyEvents.empty() ? std::optional<TimestampT>{} : mNextStrategyEvents.top().first;
-
-    if (!strategyTimestamp || marketDataTimestamp < *strategyTimestamp) {
-      std::print("Processing market data event {}: ", toString(marketDataTimestamp));
-      mNextMarketDataEvent.second();
-      mNextMarketDataEvent = mRequestMarketDataEvent();
-      return marketDataTimestamp;
-    } else {
-      std::print("Processing simulation data event {}: ", toString(*strategyTimestamp));
-      mNextStrategyEvents.top().second();
-      mNextStrategyEvents.pop();
-      return *strategyTimestamp;
-    }
-  }
+  explicit Simulator(std::function<EventT()> requestMarketDataEvent);
+  void addSimulationEvent(EventT event);
+  TimestampT step();
 
  private:
   struct CompareEventTimestampGreater {
