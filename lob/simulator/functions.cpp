@@ -87,7 +87,7 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
 
 void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreaded) try {
   using LobT = lob::LimitOrderBook<4>;
-  // using LobT = lob::LimitOrderBookWithLocks<4>;
+  using TopOfBookBuffer = RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>;
 
   std::println("Loading test file...");
 
@@ -96,7 +96,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
   std::println("Loaded {} symbols", symbols.count());
 
   auto books = boost::unordered_map<int, LobT>{};
-  auto topOfBookBuffers = boost::unordered_map<int, RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>>{};
+  auto topOfBookBuffers = boost::unordered_map<int, TopOfBookBuffer>{};
 
   topOfBookBuffers[symbols.byName("QQQ")];
   topOfBookBuffers[symbols.byName("SPY")];
@@ -178,25 +178,27 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
 
   using namespace std::chrono_literals;
 
-  auto createStrategy = [&symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
-    auto const id = symbols.byName(symbolName);
-    auto const& topOfBookBuffer = topOfBookBuffers.at(id);
-    return strategies::TrivialStrategy(topOfBookBuffer);
-  };
+  //auto createStrategy = [&symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
+  //  auto const id = symbols.byName(symbolName);
+  //  auto const& topOfBookBuffer = topOfBookBuffers.at(id);
+  //  return strategies::TrivialStrategy();
+  //};
 
   if (singleThreaded) {
-    auto strategy = createStrategy("QQQ");
+    auto strategy = strategies::TrivialStrategy<TopOfBookBuffer>();
+    auto const& topOfBookBuffer = topOfBookBuffers.at(symbols.byName("QQQ"));
+    size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
-      strategy.onUpdate();
+      strategy.onUpdate(topOfBookBuffer, bufferReadIdx);
     }
     std::println("Strategy and simulation done:");
-    auto const diagnostics = strategy.getDiagnostics();
+    auto const& diagnostics = strategy.diagnostics();
     diagnostics.print();
     diagnostics.save("diagnostics/ST_QQQ.json");
 
   } else {
-    std::stop_source stopSource;
+    std::atomic<bool> running = true;
 
     auto const simulatorLoop = [&]() {
       std::this_thread::sleep_for(1s);
@@ -205,17 +207,14 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
         simulator.step();
       }
       std::println("Simulation done.");
-      stopSource.request_stop();
+      running = false;
     };
 
-    auto const strategyLoop = [&createStrategy, st = stopSource.get_token()](std::string const& symbolName) {
-      auto strategy = createStrategy(symbolName);
-      while (!st.stop_requested()) {
-        for (int i = 0; i != 10000; ++i) {
-          strategy.onUpdate();
-        }
-      }
-      return strategy.getDiagnostics();
+    auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
+      auto strategy = strategies::TrivialStrategy<TopOfBookBuffer>();
+      auto const& topOfBookBuffer = topOfBookBuffers.at(symbols.byName(symbolName));
+      size_t bufferReadIdx = 0;
+      return strategy.loop(running, topOfBookBuffer, bufferReadIdx);
     };
 
     auto pool = exec::static_thread_pool(5);
