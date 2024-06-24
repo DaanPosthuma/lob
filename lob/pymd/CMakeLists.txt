@@ -1,4 +1,3 @@
-pybind11_add_module(pymd pymd.cpp ItchReader.cpp Condition.cpp)
-pybind11_add_module(pymdf Condition.cpp)
+pybind11_add_module(pymd pymd.cpp)
 
-target_link_libraries(pymd PRIVATE md)
+target_link_libraries(pymd PRIVATE simulator)
