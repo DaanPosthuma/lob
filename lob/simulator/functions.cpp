@@ -183,8 +183,8 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto const& book = books[symbols.byName("QQQ")];
     size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
-      simulator.step();
-      strategy.onUpdate(book.top());
+      auto timestamp = simulator.step();
+      strategy.onUpdate(timestamp, book.top());
     }
     std::println("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();

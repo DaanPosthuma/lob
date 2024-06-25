@@ -20,15 +20,15 @@ class StrategyBase {
 
         if (updates.empty()) continue;
 
-        auto const update = updates.back().first;
+        auto const mostRecentUpdateTimestamp = updates.back().first;
         self.diagnostics().bufferLoad(bufferReadIdx, m, M);
 
-        for (auto top : updates) {
-          auto const now = std::chrono::high_resolution_clock::now();
-          self.diagnostics().addLag(now - update);
-          self.diagnostics().addObs(static_cast<double>(top.second.bid), static_cast<double>(top.second.ask));
+        for (auto update : updates) {
+          auto const& [timestamp, top] = update;
+          self.diagnostics().addLag(std::chrono::high_resolution_clock::now() - timestamp);
+          self.diagnostics().addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
 
-          self.onUpdate(top);
+          self.onUpdate(timestamp, top);
         }
         
         bufferReadIdx = M + 1;
@@ -57,7 +57,7 @@ class TrivialStrategy : private StrategyBase<TopOfBookBufferT> {
   using StrategyBase<TopOfBookBufferT>::diagnostics;
   using StrategyBase<TopOfBookBufferT>::loop;
 
-  void onUpdate(auto const& top) noexcept {
+  void onUpdate(auto timestamp, auto const& top) noexcept {
     
   }
 };
