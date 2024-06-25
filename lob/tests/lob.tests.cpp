@@ -16,10 +16,12 @@ static_assert(lob::OrderId{10} < lob::OrderId{50});
 static_assert(lob::Level<4>{10000} == lob::Level<4>{10000});
 static_assert(lob::Level<4>{500} < lob::Level<4>{10000});
 
+static_assert(static_cast<double>(lob::Level<4>{10000}) == 1.0);
+static_assert(static_cast<double>(lob::Level<4>{1}) == 0.0001);
+
 TEST(LOB, AddAndDelete) {
-  auto static constexpr Precision = 4;
-  auto book = lob::LimitOrderBook<Precision>();
-  using Level = lob::Level<Precision>;
+  auto book = lob::LimitOrderBook();
+  using Level = lob::LimitOrderBook::LevelT;
 
   book.addOrder(lob::Direction::Sell, 100, Level(231400));
   book.addOrder(lob::Direction::Sell, 100, Level(231400));
@@ -64,25 +66,24 @@ TEST(LOB, AddAndDelete) {
 }
 
 TEST(LOB, AddAndReplace) {
-  auto static constexpr Precision = 0;
-  auto book = lob::LimitOrderBook<Precision>();
-  using Level = lob::Level<Precision>;
+  auto book = lob::LimitOrderBook();
+  using Level = lob::LimitOrderBook::LevelT;
 
-  auto id0 = book.addOrder(lob::Direction::Sell, 100, Level(101));
-  auto id1 = book.addOrder(lob::Direction::Buy, 100, Level(99));
+  auto id0 = book.addOrder(lob::Direction::Sell, 100, Level(1010000));
+  auto id1 = book.addOrder(lob::Direction::Buy, 100, Level(990000));
 
-  ASSERT_EQ(static_cast<int>(book.bid()), 99);
-  ASSERT_EQ(static_cast<int>(book.ask()), 101);
+  ASSERT_EQ(static_cast<int>(book.bid()), 990000);
+  ASSERT_EQ(static_cast<int>(book.ask()), 1010000);
   ASSERT_EQ(static_cast<double>(book.bid()), 99.0);
   ASSERT_EQ(static_cast<double>(book.ask()), 101.0);
   ASSERT_EQ(book.bidDepth(), 100);
   ASSERT_EQ(book.askDepth(), 100);
 
-  ASSERT_TRUE(book.replaceOrder(id0, id0, 50, Level(101)));
-  ASSERT_TRUE(book.replaceOrder(id1, id1, 150, Level(98)));
+  ASSERT_TRUE(book.replaceOrder(id0, id0, 50, Level(1010000)));
+  ASSERT_TRUE(book.replaceOrder(id1, id1, 150, Level(980000)));
 
-  ASSERT_EQ(static_cast<int>(book.bid()), 98);
-  ASSERT_EQ(static_cast<int>(book.ask()), 101);
+  ASSERT_EQ(static_cast<int>(book.bid()), 980000);
+  ASSERT_EQ(static_cast<int>(book.ask()), 1010000);
   ASSERT_EQ(static_cast<double>(book.bid()), 98.0);
   ASSERT_EQ(static_cast<double>(book.ask()), 101.0);
   ASSERT_EQ(book.bidDepth(), 150);
@@ -90,9 +91,8 @@ TEST(LOB, AddAndReplace) {
 }
 
 TEST(LOB, AddAndReduce) {
-  auto static constexpr Precision = 1;
-  auto book = lob::LimitOrderBook<Precision>();
-  using Level = lob::Level<Precision>;
+  auto book = lob::LimitOrderBook();
+  using Level = lob::LimitOrderBook::LevelT;
 
   book.addOrder(lob::Direction::Sell, 100, Level(101));
   auto id0 = book.addOrder(lob::Direction::Sell, 100, Level(101));
@@ -114,9 +114,8 @@ TEST(LOB, AddAndReduce) {
 }
 
 TEST(LOB, AddAndExecute) {
-  auto static constexpr Precision = 4;
-  auto book = lob::LimitOrderBook<Precision>();
-  using Level = lob::Level<Precision>;
+  auto book = lob::LimitOrderBook();
+  using Level = lob::LimitOrderBook::LevelT;
 
   book.addOrder(lob::Direction::Sell, 100, Level(231400));
   book.addOrder(lob::Direction::Sell, 100, Level(231400));

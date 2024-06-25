@@ -86,7 +86,7 @@ auto getNextMarketDataEvent(md::BinaryDataReader& reader, auto const& addOrder, 
 }  // namespace
 
 void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreaded) try {
-  using LobT = lob::LimitOrderBook<4>;
+  using LobT = lob::LimitOrderBook;
   using TopOfBookBuffer = RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>;
 
   std::println("Loading test file...");
@@ -179,7 +179,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
   using namespace std::chrono_literals;
 
   if (singleThreaded) {
-    auto strategy = strategies::TrivialStrategy<TopOfBookBuffer>();
+    auto strategy = strategies::TrivialStrategy();
     auto const& book = books[symbols.byName("QQQ")];
     size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
@@ -205,7 +205,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     };
 
     auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
-      auto strategy = strategies::TrivialStrategy<TopOfBookBuffer>();
+      auto strategy = strategies::TrivialStrategy();
       auto const& topOfBookBuffer = topOfBookBuffers.at(symbols.byName(symbolName));
       size_t bufferReadIdx = 0;
       return strategy.loop(running, topOfBookBuffer, bufferReadIdx);

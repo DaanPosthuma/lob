@@ -10,10 +10,9 @@
 
 namespace strategies {
 
-template <class TopOfBookBufferT>
 class StrategyBase {
  public:
-  StrategyDiagnostics const& loop(this auto& self, std::atomic<bool>& running, TopOfBookBufferT const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
+  StrategyDiagnostics const& loop(this auto& self, std::atomic<bool>& running, auto const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
     while (running.load()) {
       for (int i = 0; i != 10000; ++i) {
         auto const [updates, m, M] = topOfBookBuffer.read(bufferReadIdx);
@@ -49,13 +48,12 @@ class StrategyBase {
   StrategyDiagnostics mDiagnostics = {};
 };
 
-template <class TopOfBookBufferT>
-class TrivialStrategy : private StrategyBase<TopOfBookBufferT> {
+class TrivialStrategy : private StrategyBase {
  public:
   TrivialStrategy() {}
 
-  using StrategyBase<TopOfBookBufferT>::diagnostics;
-  using StrategyBase<TopOfBookBufferT>::loop;
+  using StrategyBase::diagnostics;
+  using StrategyBase::loop;
 
   void onUpdate(auto timestamp, auto const& top) noexcept {
     

@@ -192,10 +192,9 @@ class LevelOrders {
   int mDepth = 0;
 };
 
-template <int Precision>
 class LimitOrderBook {
  public:
-  static constexpr int Precision = Precision;
+  static constexpr int Precision = 4;
   using LevelT = Level<Precision>;
 
   LimitOrderBook()
