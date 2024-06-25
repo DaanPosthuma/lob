@@ -16,7 +16,22 @@ class StrategyBase {
   StrategyDiagnostics const& loop(this auto& self, std::atomic<bool>& running, TopOfBookBufferT const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
     while (running.load()) {
       for (int i = 0; i != 10000; ++i) {
-        self.onUpdate(topOfBookBuffer, bufferReadIdx);
+        auto const [updates, m, M] = topOfBookBuffer.read(bufferReadIdx);
+
+        if (updates.empty()) continue;
+
+        auto const update = updates.back().first;
+        self.diagnostics().bufferLoad(bufferReadIdx, m, M);
+
+        for (auto top : updates) {
+          auto const now = std::chrono::high_resolution_clock::now();
+          self.diagnostics().addLag(now - update);
+          self.diagnostics().addObs(static_cast<double>(top.second.bid), static_cast<double>(top.second.ask));
+
+          self.onUpdate(top);
+        }
+        
+        bufferReadIdx = M + 1;
       }
     }
     return self.diagnostics();
@@ -42,24 +57,8 @@ class TrivialStrategy : private StrategyBase<TopOfBookBufferT> {
   using StrategyBase<TopOfBookBufferT>::diagnostics;
   using StrategyBase<TopOfBookBufferT>::loop;
 
-  void onUpdate(TopOfBookBufferT const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
-    auto const [updates, m, M] = topOfBookBuffer.read(bufferReadIdx);
-
-    if (updates.empty()) return;
-
-    diagnostics().bufferLoad(bufferReadIdx, m, M);
-
-    // std::cout << "onUpdate timestamp: " << toString(timestamp) << ", num updates: " << updates.size() << ", m: " << m << ", M: " << M << '\n';
-
-    // auto top = updates.back();
-    for (auto top : updates) {
-      auto const now = std::chrono::high_resolution_clock::now();
-      auto const update = updates.back().first;
-      diagnostics().addLag(now - update);
-      // std::cout << toString(timestamp) << ": " << top.bid << " (" << top.bidDepth << ") " << top.ask << " (" << top.askDepth << ")\n";
-      diagnostics().addObs(static_cast<double>(top.second.bid), static_cast<double>(top.second.ask));
-    }
-    bufferReadIdx = M + 1;
+  void onUpdate(auto const& top) noexcept {
+    
   }
 };
 

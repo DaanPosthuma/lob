@@ -178,19 +178,13 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
 
   using namespace std::chrono_literals;
 
-  //auto createStrategy = [&symbols = std::as_const(symbols), &topOfBookBuffers = std::as_const(topOfBookBuffers)](std::string const& symbolName) {
-  //  auto const id = symbols.byName(symbolName);
-  //  auto const& topOfBookBuffer = topOfBookBuffers.at(id);
-  //  return strategies::TrivialStrategy();
-  //};
-
   if (singleThreaded) {
     auto strategy = strategies::TrivialStrategy<TopOfBookBuffer>();
-    auto const& topOfBookBuffer = topOfBookBuffers.at(symbols.byName("QQQ"));
+    auto const& book = books[symbols.byName("QQQ")];
     size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
-      auto timestamp = simulator.step();
-      strategy.onUpdate(topOfBookBuffer, bufferReadIdx);
+      simulator.step();
+      strategy.onUpdate(book.top());
     }
     std::println("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();
