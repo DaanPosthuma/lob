@@ -107,7 +107,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto& book = books[stockLocate];
     auto before = book.top();
     book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
-    std::println("Added order {}. Size: {}", oid, (int)qty);
+    //std::println("Added order {}. Size: {}", oid, (int)qty);
     if (before != book.top()) {
       topOfBookBuffers[stockLocate].push({std::chrono::high_resolution_clock::now(), book.top()});
     }
@@ -117,7 +117,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].deleteOrder(toOrderId(oid))) {
-      std::println("Deleted order {}", oid);
+      //std::println("Deleted order {}", oid);
     } else {
       throw std::runtime_error(std::format("Could not delete order {}", oid));
     }
@@ -130,7 +130,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].replaceOrder(toOrderId(oid), toOrderId(newOid), toInt(newQty), toLevel<LobT::Precision>(newPrice))) {
-      std::println("Replaced order {} with {}", oid, newOid);
+      //std::println("Replaced order {} with {}", oid, newOid);
     } else {
       throw std::runtime_error(std::format("Could not replace order {} with {}", oid, newOid));
     }
@@ -143,7 +143,7 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto& book = books[stockLocate];
     auto before = book.top();
     if (books[stockLocate].reduceOrder(toOrderId(oid), toInt(qty))) {
-      std::println("Reduced order {} by {}", oid, (int)qty);
+      //std::println("Reduced order {} by {}", oid, (int)qty);
     } else {
       throw std::runtime_error(std::format("Could not reduce order {} in book!!", oid, stockLocate));
     }
@@ -157,10 +157,10 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
     auto before = book.top();
     switch (books[stockLocate].executeOrder(toOrderId(oid), toInt(qty))) {
       case lob::ExecuteOrderResult::FULL:
-        std::println("Executed order {} (full: {})", oid, (int)qty);
+        //std::println("Executed order {} (full: {})", oid, (int)qty);
         break;
       case lob::ExecuteOrderResult::PARTIAL:
-        std::println("Executed order {} (partial: {})", oid, (int)qty);
+        //std::println("Executed order {} (partial: {})", oid, (int)qty);
         break;
       case lob::ExecuteOrderResult::ERROR:
         throw std::runtime_error(std::format("Could not execute order {} (qty: {})", oid, (int)qty));
@@ -181,10 +181,16 @@ void simulator::f(md::BinaryDataReader& reader, int numIters, bool singleThreade
   if (singleThreaded) {
     auto strategy = strategies::TrivialStrategy();
     auto const& book = books[symbols.byName("QQQ")];
+    auto prevTop = book.top();
     size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
       auto timestamp = simulator.step();
-      strategy.onUpdate(timestamp, book.top());
+      auto const top = book.top();
+      if (prevTop != top) {
+        strategy.onUpdate(timestamp, book.top());
+        prevTop = top;
+      }
+        
     }
     std::println("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();

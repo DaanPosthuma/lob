@@ -17,22 +17,30 @@ void to_json(nlohmann::json& j, std::chrono::nanoseconds ns) {
 
 void strategies::StrategyDiagnostics::print() const {
   std::cout << "Num obs: " << bids.size() << ", " << asks.size() << std::endl;
-  std::cout << "Avg bid: " << std::accumulate(bids.begin(), bids.end(), 0.0) / bids.size() << std::endl;
-  std::cout << "Avg ask: " << std::accumulate(asks.begin(), asks.end(), 0.0) / asks.size() << std::endl;
-  auto [bidsMin, bidsMax] = std::ranges::minmax_element(bids);
-  auto [asksMin, asksMax] = std::ranges::minmax_element(asks);
-  std::cout << "Min/max bid: " << *bidsMin << " " << *bidsMax << std::endl;
-  std::cout << "Min/max ask: " << *asksMin << " " << *asksMax << std::endl;
+  
+  if (bids.size()) {
+    auto [bidsMin, bidsMax] = std::ranges::minmax_element(bids);
+    std::cout << "Avg bid: " << std::accumulate(bids.begin(), bids.end(), 0.0) / bids.size() << std::endl;
+    std::cout << "Min/max bid: " << *bidsMin << " " << *bidsMax << std::endl;
+  }
 
+  if (asks.size()) {
+    auto [asksMin, asksMax] = std::ranges::minmax_element(asks);
+    std::cout << "Avg ask: " << std::accumulate(asks.begin(), asks.end(), 0.0) / asks.size() << std::endl;
+    std::cout << "Min/max ask: " << *asksMin << " " << *asksMax << std::endl;
+  }
+  
   std::cout << "Buffer overflows: " << numBufferOverflows << std::endl;
   std::cout << "Updates missed: " << numUpdatesMissed << std::endl;
   std::cout << "Max buffer size: " << maxBufferSize << std::endl;
 
-  auto [lagsMin, lagsMax] = std::ranges::minmax_element(lags);
-  auto lagsAvg = std::accumulate(lags.begin(), lags.end(), std::chrono::nanoseconds(0), [](auto accum, auto lag) { return accum + lag; }) / lags.size();
-
-  std::cout << "Average lag: " << lagsAvg << std::endl;
-  std::cout << "Min/max lag: " << *lagsMin << " " << *lagsMax << std::endl;
+  if (lags.size()) {
+    auto [lagsMin, lagsMax] = std::ranges::minmax_element(lags);
+    auto lagsAvg = std::accumulate(lags.begin(), lags.end(), std::chrono::nanoseconds(0), [](auto accum, auto lag) { return accum + lag; }) / lags.size();
+    std::cout << "Average lag: " << lagsAvg << std::endl;
+    std::cout << "Min/max lag: " << *lagsMin << " " << *lagsMax << std::endl;
+  }
+  
 
   std::cout << std::endl;
 }

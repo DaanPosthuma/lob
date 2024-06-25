@@ -38,12 +38,12 @@ simulator::Simulator::TimestampT simulator::Simulator::step() {
   auto strategyTimestamp = mNextStrategyEvents.empty() ? std::optional<TimestampT>{} : mNextStrategyEvents.top().first;
 
   if (!strategyTimestamp || marketDataTimestamp < *strategyTimestamp) {
-    std::print("{} (M): ", toString(marketDataTimestamp));
+    //std::print("{} (M): ", toString(marketDataTimestamp));
     mNextMarketDataEvent.second();
     mNextMarketDataEvent = mRequestMarketDataEvent();
     return marketDataTimestamp;
   } else {
-    std::print("{} (S):  ", toString(*strategyTimestamp));
+    //std::print("{} (S):  ", toString(*strategyTimestamp));
     mNextStrategyEvents.top().second();
     mNextStrategyEvents.pop();
     return *strategyTimestamp;
