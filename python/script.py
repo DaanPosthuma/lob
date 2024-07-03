@@ -3,15 +3,13 @@ import sys
 import pymd as p
 
 file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
-print(f'file: {file}, size: {file.size:,} bytes')
+print(file)
 
 reader = p.BinaryDataReader(file)
-print(f'reader: {reader}, remaining: {reader.remaining:,} bytes')
+print(reader)
 
 symbols = p.Symbols(reader)
-print(f'symbols: {symbols}')
+print(symbols)
 
-print(f'reader: {reader}, remaining: {reader.remaining:,} bytes')
-
-#lobs = p.LOBCollection()
-#lob0 = lobs.getRefefence(0)
+lobs = p.LOBCollection()
+print(lobs)
