@@ -29,7 +29,7 @@ int main() {
     auto reader = md::BinaryDataReader(file.data(), file.size());
     std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::f(reader, maxNumIters, true);
+    simulator::runTest(reader, maxNumIters, true);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
@@ -38,7 +38,7 @@ int main() {
     auto reader = md::BinaryDataReader(file.data(), file.size());
     std::println("Multi threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::f(reader, maxNumIters, false);
+    simulator::runTest(reader, maxNumIters, false);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }

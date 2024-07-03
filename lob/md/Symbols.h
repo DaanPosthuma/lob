@@ -49,6 +49,14 @@ class Symbols {
     return mIdToName[id];
   }
 
+  [[nodiscard]] auto begin() const {
+    return mNameToId.begin();
+  }
+
+  [[nodiscard]] auto end() const {
+    return mNameToId.end();
+  }
+
  private:
   std::vector<std::string> mIdToName = {std::numeric_limits<uint16_t>::max(), {}, {}};
   std::unordered_map<std::string, int> mNameToId = {};

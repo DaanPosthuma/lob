@@ -27,7 +27,7 @@ enum class ExecuteOrderResult {
   ERROR
 };
 
-std::ostream& operator<<(std::ostream& out, ExecuteOrderResult result) {
+inline std::ostream& operator<<(std::ostream& out, ExecuteOrderResult result) {
   switch (result) {
     case ExecuteOrderResult::PARTIAL:
       out << "ExecuteOrderResult::PARTIAL";

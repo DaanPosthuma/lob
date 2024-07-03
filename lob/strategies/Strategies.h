@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <atomic>
+#include <deque>
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <print>
 
 #include "StrategyDiagnostics.h"
 
@@ -12,7 +14,7 @@ namespace strategies {
 
 class StrategyBase {
  public:
-  StrategyDiagnostics const& loop(this auto& self, std::atomic<bool>& running, auto const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
+  auto const& loop(this auto& self, std::atomic<bool>& running, auto const& topOfBookBuffer, size_t& bufferReadIdx) noexcept {
     while (running.load()) {
       for (int i = 0; i != 10000; ++i) {
         auto const [updates, m, M] = topOfBookBuffer.read(bufferReadIdx);
@@ -25,7 +27,7 @@ class StrategyBase {
         for (auto update : updates) {
           auto const& [timestamp, top] = update;
           self.diagnostics().addLag(std::chrono::high_resolution_clock::now() - timestamp);
-          self.diagnostics().addObs(static_cast<double>(top.bid), static_cast<double>(top.ask)); // todo: make sure these get added in single threaded run
+          self.diagnostics().addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));  // todo: make sure these get added in single threaded run
 
           self.onUpdate(timestamp, top);
         }
@@ -107,10 +109,9 @@ class TrivialStrategy : private StrategyBase {
     auto const variance = mAccumPSq.avg() - mean * mean;
     auto const stdev = std::sqrt(variance);
 
-    if (static_cast<double>(top.bid) > mean + 2*stdev) {
+    if (static_cast<double>(top.bid) > mean + 2 * stdev) {
       std::println("sell. b:{} a:{} mp:{} mean:{} stdev:{}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
-    }
-    else if (static_cast<double>(top.ask) < mean - 2*stdev) {
+    } else if (static_cast<double>(top.ask) < mean - 2 * stdev) {
       std::println("buy. b:{} a:{} mp:{} mean:{} stdev:{}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
     }
   }

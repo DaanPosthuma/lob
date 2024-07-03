@@ -1,9 +1,17 @@
 import sys
 
-import pymd
+import pymd as p
 
-fs = pymd.FileStreamInput("aap")
-buff = pymd.RingBuffer(0)
-producer = buff.getProducer()
-consumer = buff.createConsumer()
-strategy = pymd.ConcreteStrategy("my strategy")
+file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
+print(f'file: {file}, size: {file.size:,} bytes')
+
+reader = p.BinaryDataReader(file)
+print(f'reader: {reader}, remaining: {reader.remaining:,} bytes')
+
+symbols = p.Symbols(reader)
+print(f'symbols: {symbols}')
+
+print(f'reader: {reader}, remaining: {reader.remaining:,} bytes')
+
+#lobs = p.LOBCollection()
+#lob0 = lobs.getRefefence(0)

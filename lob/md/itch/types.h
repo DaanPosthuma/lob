@@ -76,5 +76,6 @@ struct timestamp_t : std::chrono::nanoseconds {
 enum class oid_t : uint64_t {};
 enum class price_t : uint32_t {};
 enum class qty_t : uint32_t {};
+using locate_t = uint16_t;
 
 }  // namespace md::itch::types
