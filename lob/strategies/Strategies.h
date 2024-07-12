@@ -91,9 +91,9 @@ inline auto microprice(auto const& top) {
   return (vb * pa + va * pb) / (vb + va);
 }
 
-class TrivialStrategy : private StrategyBase {
+class TestStrategy : private StrategyBase {
  public:
-  TrivialStrategy(size_t k = 100) : mAccumP(k), mAccumPSq(k) {}
+  TestStrategy(size_t k = 100) : mAccumP(k), mAccumPSq(k) {}
 
   using StrategyBase::diagnostics;
   using StrategyBase::loop;

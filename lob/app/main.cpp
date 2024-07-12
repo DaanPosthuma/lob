@@ -1,6 +1,8 @@
 ﻿#include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
+#include <md/Symbols.h>
 #include <simulator/functions.h>
+
 
 #include <chrono>
 #include <print>
@@ -25,20 +27,27 @@ int main() {
   auto const file = getTestFile();
   auto const maxNumIters = 10000000;
 
+  auto reader = md::BinaryDataReader(file.data(), file.size());
+  auto const symbols = md::utils::Symbols(reader);
+  std::println("Loaded {} symbols", symbols.count());
+
+  auto marketStart = reader.curr();
+
   {
-    auto reader = md::BinaryDataReader(file.data(), file.size());
+    reader.reset(marketStart);
     std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::runTest(reader, maxNumIters, true);
+    simulator::runTest(reader, symbols, maxNumIters, true);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
   { 
+    reader.reset(marketStart);
     auto reader = md::BinaryDataReader(file.data(), file.size());
     std::println("Multi threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::runTest(reader, maxNumIters, false);
+    simulator::runTest(reader, symbols, maxNumIters, false);
     auto const end = std::chrono::high_resolution_clock::now();
     std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }

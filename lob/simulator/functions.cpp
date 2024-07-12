@@ -73,15 +73,9 @@ simulator::Simulator::EventT simulator::getNextMarketDataEvent(md::BinaryDataRea
   throw std::runtime_error("end of messages");
 }
 
-void simulator::runTest(md::BinaryDataReader& reader, int numIters, bool singleThreaded) try {
+void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& symbols, int numIters, bool singleThreaded) try {
   using LobT = lob::LimitOrderBook;
   using TopOfBookBuffer = RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>;
-
-  std::println("Loading test file...");
-
-  auto const symbols = md::utils::Symbols(reader);
-
-  std::println("Loaded {} symbols", symbols.count());
 
   ItchBooksManager bmgr;
 
@@ -90,7 +84,7 @@ void simulator::runTest(md::BinaryDataReader& reader, int numIters, bool singleT
   using namespace std::chrono_literals;
 
   if (singleThreaded) {
-    auto strategy = strategies::TrivialStrategy();
+    auto strategy = strategies::TestStrategy();
     auto const& book = bmgr.bookById(symbols.byName("QQQ"));
     auto prevTop = book.top();
     size_t bufferReadIdx = 0;
@@ -121,7 +115,7 @@ void simulator::runTest(md::BinaryDataReader& reader, int numIters, bool singleT
     };
 
     auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &bmgr](std::string const& symbolName) {
-      auto strategy = strategies::TrivialStrategy();
+      auto strategy = strategies::TestStrategy();
       auto const& topOfBookBuffer = bmgr.bufferById(symbols.byName(symbolName));
       size_t bufferReadIdx = 0;
       return strategy.loop(running, topOfBookBuffer, bufferReadIdx);

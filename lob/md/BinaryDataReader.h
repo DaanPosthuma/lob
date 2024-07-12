@@ -6,9 +6,10 @@ namespace md {
   public:
     constexpr BinaryDataReader(char const* data, size_t len) noexcept : mData(data), mLen(len) {}
 
-    char const* get(size_t n) const noexcept { return mData + mCurr + n; }
+    [[nodiscard]] char const* get(size_t n) const noexcept { return mData + mCurr + n; }
     void advance(size_t n) noexcept { mCurr += n; }
-    size_t remaining() const noexcept { return mLen - mCurr; }
+    [[nodiscard]] size_t curr() const noexcept { return mCurr; }
+    [[nodiscard]] size_t remaining() const noexcept { return mLen - mCurr; }
     void reset(size_t offset = 0) { mCurr = offset; }
 
   private:

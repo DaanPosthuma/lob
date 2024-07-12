@@ -5,10 +5,15 @@
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <simulator/ItchBooksManager.h>
 #include <simulator/Simulator.h>
+#include <simulator/functions.h>
+#include <strategies/Strategies.h>
 
 #include <memory>
 #include <print>
+
+namespace py = pybind11;
 
 namespace {
 
@@ -18,17 +23,6 @@ class LOBReference {
 
  private:
   std::reference_wrapper<lob::LimitOrderBook> mLob;
-};
-
-class LOBCollection {
- public:
-  LOBReference getRefefence(int i) {
-    if (!mLobs.contains(i)) throw std::runtime_error(std::format("LOBCollection does not contain index {}", i));
-    return mLobs[i];
-  }
-
- private:
-  std::unordered_map<int, lob::LimitOrderBook> mLobs;
 };
 
 [[nodiscard]] auto formatBytes(size_t bytes) noexcept {
@@ -43,9 +37,32 @@ class LOBCollection {
   return std::format("{:.1f}{}", count, suffixes[s]);
 }
 
-}  // namespace
+void runTestStrategy (
+    md::BinaryDataReader& reader,
+    simulator::ItchBooksManager const& bmgr,
+    strategies::TestStrategy& testStrategy,
+    md::utils::Symbols const& symbols,
+    int numIters) {
+  /*auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
+  auto const& book = bmgr.bookById(symbolId);
+  auto prevTop = book.top();
+  size_t bufferReadIdx = 0;
+  for (int i : std::views::iota(0, numIters)) {
+    
+    if (PyErr_CheckSignals() != 0)
+      throw py::error_already_set();
+    auto timestamp = simulator.step();
+    auto const top = book.top();
+    if (prevTop != top) {
+      testStrategy.onUpdate(timestamp, book.top());
+      prevTop = top;
+    }
+  }*/
 
-namespace py = pybind11;
+  simulator::runTest(reader, symbols, numIters, true);
+}
+
+}  // namespace
 
 PYBIND11_MODULE(pymd, m) {
   m.doc() = "trading simulator";
@@ -53,13 +70,14 @@ PYBIND11_MODULE(pymd, m) {
   py::class_<md::MappedFile>(m, "MappedFile")
       .def(py::init<std::string>())
       .def_property_readonly("size", &md::MappedFile::size)
-      .def("__str__", [](const md::MappedFile& f) { return std::format("<MappedFile(size={})>", formatBytes(f.size())); });
+      .def("__str__", [](md::MappedFile const& f) { return std::format("<MappedFile(size={}) at {}>", formatBytes(f.size()), static_cast<void const*>(&f)); });
 
   py::class_<md::BinaryDataReader>(m, "BinaryDataReader")
       .def(py::init([](md::MappedFile const& file) { return md::BinaryDataReader(file.data(), file.size()); }))
       .def_property_readonly("remaining", &md::BinaryDataReader::remaining)
       .def("reset", &md::BinaryDataReader::reset, py::arg("offset") = 0)
-      .def("__str__", [](const md::BinaryDataReader& r) { return std::format("<BinaryDataReader(remaining={})>", formatBytes(r.remaining())); });
+      .def("curr", &md::BinaryDataReader::curr)
+      .def("__str__", [](md::BinaryDataReader const& r) { return std::format("<BinaryDataReader(remaining={}) at {}>", formatBytes(r.remaining()), static_cast<void const*>(&r)); });
 
   py::class_<md::utils::Symbols>(m, "Symbols")
       .def(py::init<md::BinaryDataReader&>())
@@ -67,13 +85,25 @@ PYBIND11_MODULE(pymd, m) {
       .def("byName", &md::utils::Symbols::byName)
       .def("byId", &md::utils::Symbols::byId)
       .def("__iter__", [](md::utils::Symbols const& s) { return py::make_iterator(s.begin(), s.end()); }, py::keep_alive<0, 1>())
-      .def("__str__", [](const md::utils::Symbols& s) { return std::format("<Symbols(count={})>", s.count()); });
+      .def("__str__", [](md::utils::Symbols const& s) { return std::format("<Symbols(count={}) at {}>", s.count(), static_cast<void const*>(&s)); });
 
-  py::class_<LOBReference>(m, "LOB")
-      .def("__str__", [](const LOBReference& lob) { return std::format("<LOB>"); });
+  py::class_<LOBReference>(m, "LOBReference")
+      .def("__str__", [](LOBReference const& lob) { return std::format("<LOBReference at {}>", static_cast<void const*>(&lob)); });
 
-  py::class_<LOBCollection>(m, "LOBCollection")
+  py::class_<simulator::ItchBooksManager>(m, "ItchBooksManager")
       .def(py::init<>())
-      .def("get", &LOBCollection::getRefefence, py::keep_alive<0, 1>())
-      .def("__str__", [](const LOBCollection& c) { return std::format("<LOBCollection>"); });
+      .def("bookById", [](simulator::ItchBooksManager& bmgr, int id) { return LOBReference(bmgr.bookById(id)); }, py::keep_alive<0, 1>())
+      .def("__str__", [](simulator::ItchBooksManager const& bmgr) { return std::format("<ItchBooksManager at {}>", static_cast<void const*>(&bmgr)); });
+
+  py::class_<strategies::StrategyDiagnostics>(m, "StrategyDiagnostics")
+      .def("__str__", [](strategies::StrategyDiagnostics const& sd) { return std::format("<StrategyDiagnostics at {}>", static_cast<void const*>(&sd)); })
+      .def("print", &strategies::StrategyDiagnostics::print);
+
+  py::class_<strategies::TestStrategy>(m, "TestStrategy")
+      .def(py::init<int>())
+      .def("__str__", [](strategies::TestStrategy const& s) { return std::format("<TestStrategy at {}>", static_cast<void const*>(&s)); })
+      .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
+
+  m.def("runTestStrategy", &runTestStrategy);
+
 }

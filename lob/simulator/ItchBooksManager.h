@@ -23,8 +23,16 @@ class ItchBooksManager {
     return mBooks[id];
   }
 
+  [[nodiscard]] auto const& bookById(int id) const {
+    return mBooks.at(id);
+  }
+
   [[nodiscard]] auto& bufferById(int id) {
     return mTopOfBookBuffers[id];
+  }
+
+  [[nodiscard]] auto const& bufferById(int id) const {
+    return mTopOfBookBuffers.at(id);
   }
 
  private:
