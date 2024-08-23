@@ -4,10 +4,12 @@
 
 #include <chrono>
 #include <format>
+#include <print>
 
 #include "ItchToLobType.h"
 
 void simulator::ItchBooksManager::addOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid, md::itch::types::BUY_SELL buy, md::itch::types::qty_t qty, md::itch::types::price_t price) {
+  if (!mStocks.contains(stockLocate)) return;
   auto& book = mBooks[stockLocate];
   auto before = book.top();
   book.addOrder(toOrderId(oid), toDirection(buy), toInt(qty), toLevel<LobT::Precision>(price));
@@ -18,6 +20,7 @@ void simulator::ItchBooksManager::addOrder(md::itch::types::locate_t stockLocate
 }
 
 void simulator::ItchBooksManager::deleteOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid) {
+  if (!mStocks.contains(stockLocate)) return;
   auto& book = mBooks[stockLocate];
   auto before = book.top();
   if (book.deleteOrder(toOrderId(oid))) {
@@ -31,6 +34,7 @@ void simulator::ItchBooksManager::deleteOrder(md::itch::types::locate_t stockLoc
 }
 
 void simulator::ItchBooksManager::replaceOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid, md::itch::types::oid_t newOid, md::itch::types::qty_t newQty, md::itch::types::price_t newPrice) {
+  if (!mStocks.contains(stockLocate)) return;
   auto& book = mBooks[stockLocate];
   auto before = book.top();
   if (book.replaceOrder(toOrderId(oid), toOrderId(newOid), toInt(newQty), toLevel<LobT::Precision>(newPrice))) {
@@ -44,6 +48,7 @@ void simulator::ItchBooksManager::replaceOrder(md::itch::types::locate_t stockLo
 }
 
 void simulator::ItchBooksManager::reduceOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid, md::itch::types::qty_t qty) {
+  if (!mStocks.contains(stockLocate)) return;
   auto& book = mBooks[stockLocate];
   auto before = book.top();
   if (book.reduceOrder(toOrderId(oid), toInt(qty))) {
@@ -57,6 +62,7 @@ void simulator::ItchBooksManager::reduceOrder(md::itch::types::locate_t stockLoc
 }
 
 void simulator::ItchBooksManager::executeOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid, md::itch::types::qty_t qty) {
+  if (!mStocks.contains(stockLocate)) return;
   auto& book = mBooks[stockLocate];
   auto before = book.top();
   switch (book.executeOrder(toOrderId(oid), toInt(qty))) {

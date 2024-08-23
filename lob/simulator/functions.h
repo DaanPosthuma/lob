@@ -12,7 +12,9 @@ namespace md::utils {
 
 namespace simulator {
 
-Simulator::EventT getNextMarketDataEvent(md::BinaryDataReader& reader, auto& bmgr);
+class ItchBooksManager;
+
+Simulator::EventT getNextMarketDataEvent(md::BinaryDataReader& reader, ItchBooksManager& bmgr);
 void runTest(md::BinaryDataReader& reader, md::utils::Symbols const& symbols, int numIters, bool singleThreaded);
 
 }  // namespace simulator

@@ -4,7 +4,8 @@
 #include <lob/lob.h>
 #include <md/itch/types.h>
 
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 
 namespace simulator {
 
@@ -20,6 +21,7 @@ class ItchBooksManager {
   void executeOrder(md::itch::types::locate_t stockLocate, md::itch::types::oid_t oid, md::itch::types::qty_t qty);
 
   [[nodiscard]] auto& bookById(int id) {
+    optIn(id);
     return mBooks[id];
   }
 
@@ -28,6 +30,7 @@ class ItchBooksManager {
   }
 
   [[nodiscard]] auto& bufferById(int id) {
+    optIn(id);
     return mTopOfBookBuffers[id];
   }
 
@@ -35,9 +38,14 @@ class ItchBooksManager {
     return mTopOfBookBuffers.at(id);
   }
 
+  void optIn(int id) {
+    mStocks.insert(id);
+  }
+
  private:
   boost::unordered_map<int, LobT> mBooks;
   boost::unordered_map<int, TopOfBookBuffer> mTopOfBookBuffers;
+  boost::unordered_set<md::itch::types::locate_t> mStocks;
 };
 
 }  // namespace simulator

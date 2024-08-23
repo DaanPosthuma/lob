@@ -18,7 +18,7 @@
 #include "Simulator.h"
 #include "TupleMap.h"
 
-simulator::Simulator::EventT simulator::getNextMarketDataEvent(md::BinaryDataReader& reader, auto& bmgr) {
+simulator::Simulator::EventT simulator::getNextMarketDataEvent(md::BinaryDataReader& reader, ItchBooksManager& bmgr) {
   while (reader.remaining() >= 3) {
     auto const currentMessageType = md::itch::currentMessageType(reader);
     auto const start = std::chrono::high_resolution_clock::now();

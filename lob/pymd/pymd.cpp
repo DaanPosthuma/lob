@@ -37,29 +37,27 @@ class LOBReference {
   return std::format("{:.1f}{}", count, suffixes[s]);
 }
 
-void runTestStrategy (
+void testStrategy(
     md::BinaryDataReader& reader,
-    simulator::ItchBooksManager const& bmgr,
-    strategies::TestStrategy& testStrategy,
-    md::utils::Symbols const& symbols,
-    int numIters) {
-  /*auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
+    strategies::TestStrategy& strategy,
+    int symbolId,
+    unsigned int numIters) {
+  auto bmgr = simulator::ItchBooksManager{};
+  auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
   auto const& book = bmgr.bookById(symbolId);
   auto prevTop = book.top();
   size_t bufferReadIdx = 0;
-  for (int i : std::views::iota(0, numIters)) {
+  for (int i : std::views::iota(0u, numIters)) {
     
     if (PyErr_CheckSignals() != 0)
       throw py::error_already_set();
     auto timestamp = simulator.step();
     auto const top = book.top();
     if (prevTop != top) {
-      testStrategy.onUpdate(timestamp, book.top());
+      strategy.onUpdate(timestamp, book.top());
       prevTop = top;
     }
-  }*/
-
-  simulator::runTest(reader, symbols, numIters, true);
+  }
 }
 
 }  // namespace
@@ -93,6 +91,7 @@ PYBIND11_MODULE(pymd, m) {
   py::class_<simulator::ItchBooksManager>(m, "ItchBooksManager")
       .def(py::init<>())
       .def("bookById", [](simulator::ItchBooksManager& bmgr, int id) { return LOBReference(bmgr.bookById(id)); }, py::keep_alive<0, 1>())
+      .def("optIn", &simulator::ItchBooksManager::optIn)
       .def("__str__", [](simulator::ItchBooksManager const& bmgr) { return std::format("<ItchBooksManager at {}>", static_cast<void const*>(&bmgr)); });
 
   py::class_<strategies::StrategyDiagnostics>(m, "StrategyDiagnostics")
@@ -104,6 +103,6 @@ PYBIND11_MODULE(pymd, m) {
       .def("__str__", [](strategies::TestStrategy const& s) { return std::format("<TestStrategy at {}>", static_cast<void const*>(&s)); })
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
 
-  m.def("runTestStrategy", &runTestStrategy);
+  m.def("testStrategy", &testStrategy);
 
 }
