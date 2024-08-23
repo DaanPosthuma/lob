@@ -37,25 +37,34 @@ class LOBReference {
   return std::format("{:.1f}{}", count, suffixes[s]);
 }
 
-void testStrategy(
+void testStrategies(
     md::BinaryDataReader& reader,
-    strategies::TestStrategy& strategy,
-    int symbolId,
+    std::unordered_map<int, std::vector<std::reference_wrapper<strategies::TestStrategy>>> strategiesBySymbolId,
     unsigned int numIters) {
   auto bmgr = simulator::ItchBooksManager{};
   auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
-  auto const& book = bmgr.bookById(symbolId);
-  auto prevTop = book.top();
+  
+  auto prevTopById = boost::unordered_map<int, lob::LimitOrderBook::TopOfBook>{};
+  for (auto const& [symbolId, strategies] : strategiesBySymbolId) {
+    prevTopById[symbolId] = bmgr.bookById(symbolId).top();
+  }
+  
   size_t bufferReadIdx = 0;
   for (int i : std::views::iota(0u, numIters)) {
     
     if (PyErr_CheckSignals() != 0)
       throw py::error_already_set();
     auto timestamp = simulator.step();
-    auto const top = book.top();
-    if (prevTop != top) {
-      strategy.onUpdate(timestamp, book.top());
-      prevTop = top;
+
+    for (auto const& [symbolId, strategies] : strategiesBySymbolId) {
+      auto& prevTop = prevTopById.at(symbolId);
+      auto const& currTop = bmgr.bookById(symbolId).top();
+      if (prevTop != currTop) {
+        for (auto& strategy : strategies) {
+          strategy.get().onUpdate(timestamp, currTop);
+        }
+        prevTop = currTop;
+      }
     }
   }
 }
@@ -103,6 +112,6 @@ PYBIND11_MODULE(pymd, m) {
       .def("__str__", [](strategies::TestStrategy const& s) { return std::format("<TestStrategy at {}>", static_cast<void const*>(&s)); })
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
 
-  m.def("testStrategy", &testStrategy);
+  m.def("testStrategies", &testStrategies);
 
 }

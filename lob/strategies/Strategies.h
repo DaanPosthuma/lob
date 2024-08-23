@@ -27,7 +27,6 @@ class StrategyBase {
         for (auto update : updates) {
           auto const& [timestamp, top] = update;
           self.diagnostics().addLag(std::chrono::high_resolution_clock::now() - timestamp);
-          self.diagnostics().addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));  // todo: make sure these get added in single threaded run
 
           self.onUpdate(timestamp, top);
         }
@@ -101,6 +100,8 @@ class TestStrategy : private StrategyBase {
   void onUpdate(auto timestamp, auto const& top) noexcept {
     if (static_cast<int>(top.bid) == 0 || static_cast<int>(top.ask) == 0) return;
     auto const price = microprice(top);
+
+    diagnostics().addObs(static_cast<double>(top.bid), static_cast<double>(top.ask));
 
     mAccumP.add(price);
     mAccumPSq.add(price * price);
