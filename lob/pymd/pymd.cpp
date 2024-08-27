@@ -5,6 +5,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/chrono.h>
 #include <simulator/ItchBooksManager.h>
 #include <simulator/Simulator.h>
 #include <simulator/functions.h>
@@ -38,7 +39,7 @@ class LOBReference {
 }
 
 void testStrategies(
-    md::BinaryDataReader& reader,
+    md::BinaryDataReader reader,
     std::unordered_map<int, std::vector<std::reference_wrapper<strategies::TestStrategy>>> strategiesBySymbolId,
     unsigned int numIters) {
   auto bmgr = simulator::ItchBooksManager{};
@@ -49,12 +50,12 @@ void testStrategies(
     prevTopById[symbolId] = bmgr.bookById(symbolId).top();
   }
   
-  size_t bufferReadIdx = 0;
   for (int i : std::views::iota(0u, numIters)) {
     
     if (PyErr_CheckSignals() != 0)
       throw py::error_already_set();
-    auto timestamp = simulator.step();
+    
+    auto const timestamp = simulator.step();
 
     for (auto const& [symbolId, strategies] : strategiesBySymbolId) {
       auto& prevTop = prevTopById.at(symbolId);
@@ -67,6 +68,39 @@ void testStrategies(
       }
     }
   }
+}
+
+auto getTopOfBookData(
+    md::BinaryDataReader reader,
+    int const& symbolId,
+    unsigned int numIters) {
+  auto bmgr = simulator::ItchBooksManager{};
+  auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
+  
+  auto prevTop = bmgr.bookById(symbolId).top();
+
+  auto timestamps = std::vector<std::chrono::nanoseconds>{};
+  auto bids = std::vector<double>{};
+  auto asks = std::vector<double>{};
+  
+  for (int i : std::views::iota(0u, numIters)) {
+    
+    if (PyErr_CheckSignals() != 0)
+      throw py::error_already_set();
+    
+    auto const timestamp = simulator.step();
+    
+    auto const& currTop = bmgr.bookById(symbolId).top();
+    if (prevTop != currTop) {
+      timestamps.push_back(timestamp);
+      bids.push_back(static_cast<double>(currTop.bid));
+      asks.push_back(static_cast<double>(currTop.ask));
+      prevTop = currTop;
+    }
+    
+  }
+
+  return std::tuple{timestamps, bids, asks};
 }
 
 }  // namespace
@@ -113,5 +147,6 @@ PYBIND11_MODULE(pymd, m) {
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
 
   m.def("testStrategies", &testStrategies);
+  m.def("getTopOfBookData", &getTopOfBookData);
 
 }
