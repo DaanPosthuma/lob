@@ -7,7 +7,11 @@ import pymd as p
 file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
 reader = p.BinaryDataReader(file)
 symbols = p.Symbols(reader)
-strategies = {symbols.byName('QQQ'): [p.TestStrategy(n) for n in [10, 50, 100, 200, 500]]}
+oms = p.OMS()
+symbol_id = symbols.byName('QQQ')
+#ks = [10, 50, 100, 200, 500]
+ks = [100]
+strategies = {symbol_id: [p.TestStrategy(oms, k, symbol_id) for k in ks]}
 
 print(f'file: {file}')
 print(f'reader: {reader}')
@@ -27,9 +31,9 @@ for id, strategiesForSymbol in strategies.items():
     for strategy in strategiesForSymbol:
         strategy.diagnostics.print()
 
-timestamps, bids, asks = p.getTopOfBookData(reader, symbols.byName('QQQ'), 1000000)
+timestamps, bids, asks = p.getTopOfBookData(reader, symbol_id, N)
 
-def plotBA(n=500):
+def plotBA(n=0):
     timestamps_ = [t.total_seconds() for t in timestamps]
     plt.plot(timestamps_[n:], bids[n:])
     plt.plot(timestamps_[n:], asks[n:])

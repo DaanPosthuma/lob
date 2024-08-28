@@ -283,17 +283,17 @@ class LimitOrderBook {
     auto const bs = orderIt->direction() == Direction::Sell ? 'S' : 'B';
 
     if (level != side.rbegin()->first) {
-      std::println("Executing {}, but it's not the best price (bs: {})", (int)orderId, bs);
+      /*std::println("Executing {}, but it's not the best price (bs: {})", (int)orderId, bs);
       std::println("best level: {}. ", static_cast<int>(side.rbegin()->first), static_cast<double>(side.rbegin()->first));
       std::print("level: {} ({}). ", static_cast<int>(level), static_cast<double>(level));
-      std::cout << *this << std::endl;
+      std::cout << *this << std::endl;*/
     }
 
     
     if (auto [total, priority] = side[level].timePriority(orderIt); priority != 1) {
-      std::println("Executing {}, but not best time priority (priority: {}, total: {}, bs: {})", (int)orderId, priority, total, bs);
+      /*std::println("Executing {}, but not best time priority (priority: {}, total: {}, bs: {})", (int)orderId, priority, total, bs);
       std::print("level: {} ({}). ", static_cast<int>(level), static_cast<double>(level));
-      side[level].print();
+      side[level].print();*/
     }
 
     if (orderIt->size() == size) {

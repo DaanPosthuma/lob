@@ -137,12 +137,16 @@ PYBIND11_MODULE(pymd, m) {
       .def("optIn", &simulator::ItchBooksManager::optIn)
       .def("__str__", [](simulator::ItchBooksManager const& bmgr) { return std::format("<ItchBooksManager at {}>", static_cast<void const*>(&bmgr)); });
 
+  py::class_<simulator::OMS>(m, "OMS")
+      .def(py::init<>())
+      .def("__str__", [](simulator::OMS const& oms) { return std::format("<OMS(...) at {}>", static_cast<void const*>(&oms)); });
+
   py::class_<strategies::StrategyDiagnostics>(m, "StrategyDiagnostics")
       .def("__str__", [](strategies::StrategyDiagnostics const& sd) { return std::format("<StrategyDiagnostics at {}>", static_cast<void const*>(&sd)); })
       .def("print", &strategies::StrategyDiagnostics::print);
 
   py::class_<strategies::TestStrategy>(m, "TestStrategy")
-      .def(py::init<int>())
+      .def(py::init<simulator::OMS&, int, int>())
       .def("__str__", [](strategies::TestStrategy const& s) { return std::format("<TestStrategy at {}>", static_cast<void const*>(&s)); })
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
 

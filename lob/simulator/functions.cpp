@@ -74,18 +74,18 @@ simulator::Simulator::EventT simulator::getNextMarketDataEvent(md::BinaryDataRea
 }
 
 void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& symbols, int numIters, bool singleThreaded) try {
-  using LobT = lob::LimitOrderBook;
-  using TopOfBookBuffer = RingBuffer<std::pair<std::chrono::high_resolution_clock::time_point, LobT::TopOfBook>, 64>;
 
   ItchBooksManager bmgr;
 
   auto simulator = simulator::Simulator{[&] { return getNextMarketDataEvent(reader, bmgr); }};
+  auto oms = simulator::OMS{};
 
   using namespace std::chrono_literals;
 
   if (singleThreaded) {
-    auto strategy = strategies::TestStrategy();
-    auto const& book = bmgr.bookById(symbols.byName("QQQ"));
+    auto const symbolId = symbols.byName("QQQ");
+    auto strategy = strategies::TestStrategy(oms, symbolId);
+    auto const& book = bmgr.bookById(symbolId);
     auto prevTop = book.top();
     size_t bufferReadIdx = 0;
     for (int i : std::views::iota(0, numIters)) {
@@ -114,9 +114,10 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
       running = false;
     };
 
-    auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &bmgr](std::string const& symbolName) {
-      auto strategy = strategies::TestStrategy();
-      auto const& topOfBookBuffer = bmgr.bufferById(symbols.byName(symbolName));
+    auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &bmgr, &oms](std::string const& symbolName) {
+      auto const symbolId = symbols.byName(symbolName);
+      auto strategy = strategies::TestStrategy(oms, symbolId);
+      auto const& topOfBookBuffer = bmgr.bufferById(symbolId);
       size_t bufferReadIdx = 0;
       return strategy.loop(running, topOfBookBuffer, bufferReadIdx);
     };
