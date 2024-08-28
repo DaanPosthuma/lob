@@ -105,52 +105,86 @@ auto getTopOfBookData(
 }
 
 void loggerTest() {
-  using namespace std::chrono_literals;
-  auto q = logger::Queue(16);
-  auto logger = logger::Logger(q);
-  auto done = std::atomic<bool>(false);
   
-  auto coutHandler = std::jthread([&](){
-    while (!done) {
-      if (auto msg = q.pop()) {
-        std::println("popped: {}", msg->msg);
-      }
-      std::this_thread::sleep_for(1ms);
-    }
-  });
-
+  using namespace std::chrono_literals;
+  
+  auto const printLogMessage = [](logging::LogMessage const& msg) { std::println("{}", msg.msg); };
+  auto lm = logging::Manager(32, printLogMessage, 1ms);
+  auto& logger = lm.logger();
+  
   std::this_thread::sleep_for(1s);
 
-  logger.log("First message");
-  logger.log("Second message");
-  logger.log("Third message");
+  {
+    auto writerA = std::jthread([&](){
 
-  std::this_thread::sleep_for(1s);
+      logger.log("A First message");
+      logger.log("A Second message");
+      logger.log("A Third message");
 
-  logger.log("4th message");
-  logger.log("5th message");
-  logger.log("6th message");
-  logger.log("7th message");
-  logger.log("8th message");
-  logger.log("9th message");
-  logger.log("10th message");
-  logger.log("11th message");
-  logger.log("12th message");
-  logger.log("13th message");
-  logger.log("14th message");
-  logger.log("15th message");
+      std::this_thread::sleep_for(1s);
 
-  //std::this_thread::sleep_for(1s);
+      logger.log("A 4th message");
+      logger.log("A 5th message");
+      logger.log("A 6th message");
+      logger.log("A 7th message");
+      logger.log("A 8th message");
+      logger.log("A 9th message");
+      logger.log("A 10th message");
+      logger.log("A 11th message");
+      logger.log("A 12th message");
+      logger.log("A 13th message");
+      logger.log("A 14th message");
+      logger.log("A 15th message");
 
-  logger.log("16th message");
-  logger.log("17th message");
-  logger.log("18th message");
-  logger.log("19th message");
-  logger.log("20th message");
+      std::this_thread::sleep_for(1s);
 
-  std::this_thread::sleep_for(1s);
+      logger.log("A 16th message");
+      logger.log("A 17th message");
+      logger.log("A 18th message");
+      logger.log("A 19th message");
+      logger.log("A 20th message");
+      logger.log("A 21st message");
+      logger.log("A 22nd message");
 
-  done = true;
+      std::this_thread::sleep_for(1s);
+
+    });
+
+    auto writerB = std::jthread([&](){
+
+      logger.log("B First message");
+      logger.log("B Second message");
+      logger.log("B Third message");
+
+      std::this_thread::sleep_for(1s);
+
+      logger.log("B 4th message");
+      logger.log("B 5th message");
+      logger.log("B 6th message");
+      logger.log("B 7th message");
+      logger.log("B 8th message");
+      logger.log("B 9th message");
+      logger.log("B 10th message");
+      logger.log("B 11th message");
+      logger.log("B 12th message");
+      logger.log("B 13th message");
+      logger.log("B 14th message");
+      logger.log("B 15th message");
+
+      //std::this_thread::sleep_for(1s);
+
+      logger.log("B 16th message");
+      logger.log("B 17th message");
+      logger.log("B 18th message");
+      logger.log("B 19th message");
+      logger.log("B 20th message");
+      logger.log("B 21st message");
+      logger.log("B 22nd message");
+
+      std::this_thread::sleep_for(1s);
+
+    });
+  }
 
 }
 
