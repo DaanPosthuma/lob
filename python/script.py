@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 
 import pymd as p
 
+p.loggerTest()
+print("logger test done\n")
+
 file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
 reader = p.BinaryDataReader(file)
 symbols = p.Symbols(reader)
@@ -18,7 +21,7 @@ print(f'reader: {reader}')
 print(f'symbols: {symbols}')
 print(f'strategies: {strategies}')
 
-N = 10000000
+N = 1000000
 
 ts = time.time()
 p.testStrategies(reader, strategies, N)
@@ -39,4 +42,4 @@ def plotBA(n=0):
     plt.plot(timestamps_[n:], asks[n:])
     plt.show()
 
-plotBA()
+#plotBA()

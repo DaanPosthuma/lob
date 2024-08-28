@@ -10,6 +10,7 @@
 #include <simulator/Simulator.h>
 #include <simulator/functions.h>
 #include <strategies/Strategies.h>
+#include <logger/Logger.h>
 
 #include <memory>
 #include <print>
@@ -103,6 +104,56 @@ auto getTopOfBookData(
   return std::tuple{timestamps, bids, asks};
 }
 
+void loggerTest() {
+  using namespace std::chrono_literals;
+  auto q = logger::Queue(16);
+  auto logger = logger::Logger(q);
+  auto done = std::atomic<bool>(false);
+  
+  auto coutHandler = std::jthread([&](){
+    while (!done) {
+      if (auto msg = q.pop()) {
+        std::println("popped: {}", msg->msg);
+      }
+      std::this_thread::sleep_for(1ms);
+    }
+  });
+
+  std::this_thread::sleep_for(1s);
+
+  logger.log("First message");
+  logger.log("Second message");
+  logger.log("Third message");
+
+  std::this_thread::sleep_for(1s);
+
+  logger.log("4th message");
+  logger.log("5th message");
+  logger.log("6th message");
+  logger.log("7th message");
+  logger.log("8th message");
+  logger.log("9th message");
+  logger.log("10th message");
+  logger.log("11th message");
+  logger.log("12th message");
+  logger.log("13th message");
+  logger.log("14th message");
+  logger.log("15th message");
+
+  //std::this_thread::sleep_for(1s);
+
+  logger.log("16th message");
+  logger.log("17th message");
+  logger.log("18th message");
+  logger.log("19th message");
+  logger.log("20th message");
+
+  std::this_thread::sleep_for(1s);
+
+  done = true;
+
+}
+
 }  // namespace
 
 PYBIND11_MODULE(pymd, m) {
@@ -152,5 +203,6 @@ PYBIND11_MODULE(pymd, m) {
 
   m.def("testStrategies", &testStrategies);
   m.def("getTopOfBookData", &getTopOfBookData);
+  m.def("loggerTest", &loggerTest);
 
 }
