@@ -1,16 +1,16 @@
 #include <lob/lob.h>
+#include <logger/Logger.h>
 #include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
+#include <pybind11/chrono.h>
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/chrono.h>
 #include <simulator/ItchBooksManager.h>
 #include <simulator/Simulator.h>
 #include <simulator/functions.h>
 #include <strategies/Strategies.h>
-#include <logger/Logger.h>
 
 #include <memory>
 #include <print>
@@ -18,6 +18,8 @@
 namespace py = pybind11;
 
 namespace {
+
+using namespace std::chrono_literals;
 
 class LOBReference {
  public:
@@ -43,19 +45,19 @@ void testStrategies(
     md::BinaryDataReader reader,
     std::unordered_map<int, std::vector<std::reference_wrapper<strategies::TestStrategy>>> strategiesBySymbolId,
     unsigned int numIters) {
+
   auto bmgr = simulator::ItchBooksManager{};
   auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
-  
+
   auto prevTopById = boost::unordered_map<int, lob::LimitOrderBook::TopOfBook>{};
   for (auto const& [symbolId, strategies] : strategiesBySymbolId) {
     prevTopById[symbolId] = bmgr.bookById(symbolId).top();
   }
-  
+
   for (int i : std::views::iota(0u, numIters)) {
-    
     if (PyErr_CheckSignals() != 0)
       throw py::error_already_set();
-    
+
     auto const timestamp = simulator.step();
 
     for (auto const& [symbolId, strategies] : strategiesBySymbolId) {
@@ -75,22 +77,22 @@ auto getTopOfBookData(
     md::BinaryDataReader reader,
     int const& symbolId,
     unsigned int numIters) {
+
   auto bmgr = simulator::ItchBooksManager{};
   auto simulator = simulator::Simulator{[&] { return simulator::getNextMarketDataEvent(reader, bmgr); }};
-  
+
   auto prevTop = bmgr.bookById(symbolId).top();
 
   auto timestamps = std::vector<std::chrono::nanoseconds>{};
   auto bids = std::vector<double>{};
   auto asks = std::vector<double>{};
-  
+
   for (int i : std::views::iota(0u, numIters)) {
-    
     if (PyErr_CheckSignals() != 0)
       throw py::error_already_set();
-    
+
     auto const timestamp = simulator.step();
-    
+
     auto const& currTop = bmgr.bookById(symbolId).top();
     if (prevTop != currTop) {
       timestamps.push_back(timestamp);
@@ -98,7 +100,6 @@ auto getTopOfBookData(
       asks.push_back(static_cast<double>(currTop.ask));
       prevTop = currTop;
     }
-    
   }
 
   return std::tuple{timestamps, bids, asks};
@@ -106,86 +107,78 @@ auto getTopOfBookData(
 
 void loggerTest() {
   
-  using namespace std::chrono_literals;
-  
-  auto const printLogMessage = [](logging::LogMessage const& msg) { std::println("{}", msg.msg); };
-  auto lm = logging::Manager(32, printLogMessage, 1ms);
-  auto& logger = lm.logger();
-  
+  auto lm = logging::Manager(16, logging::printLogMessage, 1ms);
+  auto loggerPtr = &lm.logger();
+
   std::this_thread::sleep_for(1s);
 
   {
-    auto writerA = std::jthread([&](){
-
-      logger.log("A First message");
-      logger.log("A Second message");
-      logger.log("A Third message");
-
-      std::this_thread::sleep_for(1s);
-
-      logger.log("A 4th message");
-      logger.log("A 5th message");
-      logger.log("A 6th message");
-      logger.log("A 7th message");
-      logger.log("A 8th message");
-      logger.log("A 9th message");
-      logger.log("A 10th message");
-      logger.log("A 11th message");
-      logger.log("A 12th message");
-      logger.log("A 13th message");
-      logger.log("A 14th message");
-      logger.log("A 15th message");
+    auto writerA = std::jthread([&]() {
+      LOG("A First message");
+      LOG("A Second message");
+      LOG("A Third message: {}", 3);
 
       std::this_thread::sleep_for(1s);
 
-      logger.log("A 16th message");
-      logger.log("A 17th message");
-      logger.log("A 18th message");
-      logger.log("A 19th message");
-      logger.log("A 20th message");
-      logger.log("A 21st message");
-      logger.log("A 22nd message");
-
-      std::this_thread::sleep_for(1s);
-
-    });
-
-    auto writerB = std::jthread([&](){
-
-      logger.log("B First message");
-      logger.log("B Second message");
-      logger.log("B Third message");
-
-      std::this_thread::sleep_for(1s);
-
-      logger.log("B 4th message");
-      logger.log("B 5th message");
-      logger.log("B 6th message");
-      logger.log("B 7th message");
-      logger.log("B 8th message");
-      logger.log("B 9th message");
-      logger.log("B 10th message");
-      logger.log("B 11th message");
-      logger.log("B 12th message");
-      logger.log("B 13th message");
-      logger.log("B 14th message");
-      logger.log("B 15th message");
+      LOG("A 4th message");
+      LOG("A 5th message");
+      LOG("A 6th message");
+      LOG("A 7th message");
+      LOG("A 8th message");
+      LOG("A 9th message");
+      LOG("A 10th message");
+      LOG("A 11th message");
+      LOG("A 12th message");
+      LOG("A 13th message");
+      LOG("A 14th message");
+      LOG("A 15th message");
 
       //std::this_thread::sleep_for(1s);
 
-      logger.log("B 16th message");
-      logger.log("B 17th message");
-      logger.log("B 18th message");
-      logger.log("B 19th message");
-      logger.log("B 20th message");
-      logger.log("B 21st message");
-      logger.log("B 22nd message");
+      LOG("A 16th message");
+      LOG("A 17th message");
+      LOG("A 18th message");
+      LOG("A 19th message");
+      LOG("A 20th message");
+      LOG("A 21st message");
+      LOG("A 22nd message");
+
+      std::this_thread::sleep_for(1s);
+    });
+
+    auto writerB = std::jthread([&]() {
+      LOG("B First message");
+      LOG("B Second message");
+      LOG("B Third message");
 
       std::this_thread::sleep_for(1s);
 
+      LOG("B 4th message");
+      LOG("B 5th message");
+      LOG("B 6th message");
+      LOG("B 7th message");
+      LOG("B 8th message");
+      LOG("B 9th message");
+      LOG("B 10th message");
+      LOG("B 11th message");
+      LOG("B 12th message");
+      LOG("B 13th message");
+      LOG("B 14th message");
+      LOG("B 15th message");
+
+      // std::this_thread::sleep_for(1s);
+
+      LOG("B 16th message");
+      LOG("B 17th message");
+      LOG("B 18th message");
+      LOG("B 19th message");
+      LOG("B 20th message");
+      LOG("B 21st message");
+      LOG("B 22nd message");
+
+      std::this_thread::sleep_for(1s);
     });
   }
-
 }
 
 }  // namespace
@@ -238,5 +231,4 @@ PYBIND11_MODULE(pymd, m) {
   m.def("testStrategies", &testStrategies);
   m.def("getTopOfBookData", &getTopOfBookData);
   m.def("loggerTest", &loggerTest);
-
 }

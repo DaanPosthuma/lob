@@ -24,17 +24,17 @@ class Queue {
     auto& [done, slot] = mMessages[writeIdx];
     if (done) {
       done = false;
-      std::println("Logger::push - Buffer overflow! writeIdx: {}, mNextWrite: {}, mNextRead: {}, size: {}", writeIdx, mNextWrite.load(), mNextRead, mSize);
+      //if (recurse) push(timestamp, std::format("Logger::push - Buffer overflow! writeIdx: {}, mNextWrite: {}, mNextRead: {}, size: {}", writeIdx, mNextWrite.load(), mNextRead, mSize), false);
     }
     slot.timestamp = timestamp;
     slot.msg = std::move(msg);
     done = true;
   }
 
-  std::optional<LogMessage> pop() noexcept {
+  [[nodiscard]] std::optional<LogMessage> pop() noexcept {
     if (mNextRead == mNextWrite) return {};
     if (mNextWrite - mNextRead > mSize) {
-      std::println("Logger::pop - Missed {} message(s)", mNextWrite - mNextRead - mSize);
+      //if (recurse) push({}, std::format("Logger::pop - Missed {} message(s)", mNextWrite - mNextRead - mSize), false);
       mNextRead = mNextWrite - mSize;
     }
     auto readIdx = mask(mNextRead);
@@ -60,9 +60,9 @@ class Logger {
  public:
   Logger(Queue& queue) : mQueue(queue) {}
 
-  void log(std::string msg) {
-    static int logCount = 0;
-    mQueue.push(logCount++, std::move(msg));
+  template <class... Args>
+  void log(std::format_string<Args...> fmt, Args&&... args) {
+    mQueue.push(0, std::format(fmt, std::forward<Args>(args)...));
   }
 
  private:
@@ -73,19 +73,16 @@ class Manager {
  public:
   Manager(size_t queueSize, std::function<void(LogMessage const&)> const& messageHandler, auto sleepDuration)
       : mQueue(queueSize), mLogger(mQueue), mHandler([this, &messageHandler, sleepDuration](std::stop_token stopToken) { loop(stopToken, messageHandler, sleepDuration); }) {}
-  Logger& logger() noexcept { return mLogger; }
-  Queue& q() noexcept { return mQueue; }  // todo: remove
+  [[nodiscard]] Logger& logger() noexcept { return mLogger; }
 
  private:
   void loop(std::stop_token stopToken, std::function<void(LogMessage const&)> const& logMessageHandler, auto sleepDuration) {
     while (!stopToken.stop_requested()) {
       if (auto msg = mQueue.pop()) {
         logMessageHandler(*msg);
-      }
-      else {
+      } else {
         std::this_thread::sleep_for(sleepDuration);
       }
-      
     }
   }
 
@@ -93,5 +90,11 @@ class Manager {
   Logger mLogger;
   std::jthread mHandler;
 };
+
+void printLogMessage(logging::LogMessage const& msg) {
+  std::println("{}", msg.msg);
+};
+
+#define LOG(...) if (loggerPtr != nullptr) { loggerPtr->log(__VA_ARGS__); }
 
 }  // namespace logging
