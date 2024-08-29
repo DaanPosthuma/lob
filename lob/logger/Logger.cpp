@@ -1,6 +1,9 @@
 #include "Logger.h"
 
 #include <bit>
+#include <fstream>
+#include <iostream>
+#include <iterator>
 #include <print>
 #include <stop_token>
 
@@ -10,7 +13,7 @@ constexpr uint64_t next_pow2(uint64_t x) noexcept {
   return x == 1 ? 1 : 1 << (64 - std::countl_zero(x - 1));
 }
 
-void loopHandler(auto& queue, std::stop_token stopToken, std::function<void(logging::LogMessage const&)> const& logMessageHandler, auto sleepDuration) {
+void loggerLoop(auto& queue, std::stop_token stopToken, std::function<void(logging::LogMessage const&)> const& logMessageHandler, auto sleepDuration) {
   while (!stopToken.stop_requested()) {
     if (auto msg = queue.pop()) {
       // std::println("Got message!");
@@ -23,11 +26,24 @@ void loopHandler(auto& queue, std::stop_token stopToken, std::function<void(logg
   // std::println("Stop requested, all done!");
 }
 
+template <class OutputIt>
+void messagePrinter(OutputIt out, logging::LogMessage const& msg) {
+  std::format_to(out, "{}\n", msg.msg);
+}
+
 }  // namespace
 
-void logging::handlers::print(logging::LogMessage const& msg) {
-  std::println("{}", msg.msg);
-};
+logging::handlers::HandlerT logging::handlers::createCoutHandler() noexcept {
+  return [out = std::ostream_iterator<char>(std::cout)](logging::LogMessage const& msg) { messagePrinter(out, msg); };
+}
+
+logging::handlers::HandlerT logging::handlers::createFileHandler(std::string const& filename) {
+  return {};
+  //   auto file = std::ofstream(filename, std::ios::binary);
+  //   auto out = std::ostreambuf_iterator<char>(file);
+  //   auto l = [](logging::LogMessage const& msg) { /*messagePrinter(out, msg);*/ };
+  //   return logging::handlers::HandlerT(std::move(l)); // need std::move_only_function
+}
 
 logging::Queue::Queue(size_t size) : mSize(next_pow2(size)), mMessages(mSize) {}
 
@@ -62,10 +78,10 @@ size_t constexpr logging::Queue::mask(size_t idx) const noexcept {
   return idx & (mSize - 1);
 }
 
-logging::Logger::Logger() : Logger(1024, handlers::print, 10ms) {}
+logging::Logger::Logger() : Logger(1024, handlers::createCoutHandler(), 10ms) {}
 
 logging::Logger::Logger(size_t queueSize, std::function<void(LogMessage const&)> messageHandler, std::chrono::milliseconds sleepDuration)
-    : mQueue(queueSize), 
-    mHandler([this, 
-    messageHandler = std::move(messageHandler), 
-    sleepDuration](std::stop_token stopToken) { loopHandler(mQueue, stopToken, messageHandler, sleepDuration); }) {}
+    : mQueue(queueSize),
+      mHandler([this,
+                messageHandler = std::move(messageHandler),
+                sleepDuration](std::stop_token stopToken) { loggerLoop(mQueue, stopToken, messageHandler, sleepDuration); }) {}

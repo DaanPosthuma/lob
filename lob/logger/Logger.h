@@ -16,9 +16,10 @@ struct LogMessage {
 };
 
 namespace handlers {
-  void print(logging::LogMessage const& msg);
+  using HandlerT = std::function<void(logging::LogMessage const& msg)>;
+  HandlerT createCoutHandler() noexcept;
+  HandlerT createFileHandler(std::string const& filename);
 }
-
 
 class Queue {
  public:

@@ -109,7 +109,7 @@ auto getTopOfBookData(
 
 void loggerTest() {
   
-  auto logger = logging::Logger(16, logging::handlers::print, 1ms);
+  auto logger = logging::Logger(16, logging::handlers::createCoutHandler(), 1ms);
 
   std::this_thread::sleep_for(1s);
 
@@ -230,7 +230,7 @@ PYBIND11_MODULE(pymd, m) {
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
 
   py::class_<logging::Logger>(m, "Logger")
-      .def(py::init([](int queueSize, std::chrono::milliseconds sleepDuration) { return std::make_unique<logging::Logger>(queueSize, logging::handlers::print, sleepDuration); }))
+      .def(py::init([](int queueSize, std::chrono::milliseconds sleepDuration) { return std::make_unique<logging::Logger>(queueSize, logging::handlers::createCoutHandler(), sleepDuration); }))
       .def("__str__", [](logging::Logger const& l) { return std::format("<Logger at {}>", static_cast<void const*>(&l)); });
 
   m.def("testStrategies", &testStrategies);
