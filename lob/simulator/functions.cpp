@@ -98,7 +98,7 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
     }
     if (logger) logger->log("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();
-    diagnostics.print();
+    if (logger) logger->log("{}", diagnostics.toString());
     diagnostics.save("diagnostics/ST_QQQ.json");
 
   } else {
@@ -140,8 +140,7 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
 
     auto f = [logger](auto const& diagnostics, size_t i) {
       if (logger) logger->log("Diagnostics {}:", i);
-      diagnostics.print();
-      if (logger) logger->log("");
+      if (logger) logger->log("{}", diagnostics.toString());
     };
 
     tuple_map(diagnostics, f);

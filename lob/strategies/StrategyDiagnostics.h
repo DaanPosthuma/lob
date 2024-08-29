@@ -29,7 +29,7 @@ struct StrategyDiagnostics {
     maxBufferSize = std::max(maxBufferSize, M - m + 1);
   }
 
-  void print() const;
+  [[nodiscard]] std::string toString() const noexcept;
   void save(std::string const& filename) const;
 };
 

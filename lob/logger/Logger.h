@@ -3,23 +3,23 @@
 #include <atomic>
 #include <functional>
 #include <optional>
-#include <print>
 #include <thread>
 #include <vector>
+#include <fstream>
 
 namespace logging {
 
 struct LogMessage {
-  int timestamp = 0;
+  std::chrono::system_clock::time_point timestamp = {};
   std::string msg = {};
   bool overflow = false;
 };
 
 namespace handlers {
-  using HandlerT = std::function<void(logging::LogMessage const& msg)>;
-  HandlerT createCoutHandler() noexcept;
-  HandlerT createFileHandler(std::string const& filename);
-}
+using HandlerT = std::function<void(logging::LogMessage const& msg)>;
+HandlerT createCoutHandler() noexcept;
+HandlerT createFileHandler(std::ofstream& out);
+}  // namespace handlers
 
 class Queue {
  public:

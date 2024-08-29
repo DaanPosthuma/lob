@@ -26,9 +26,16 @@ void loggerLoop(auto& queue, std::stop_token stopToken, std::function<void(loggi
   // std::println("Stop requested, all done!");
 }
 
+auto toString(std::chrono::system_clock::time_point tp) {
+    auto tt = std::chrono::system_clock::to_time_t(tp);
+    auto s = std::string(std::ctime(&tt));
+    s.pop_back();
+    return s;
+}
+
 template <class OutputIt>
 void messagePrinter(OutputIt out, logging::LogMessage const& msg) {
-  std::format_to(out, "{}\n", msg.msg);
+  std::format_to(out, "{}: {}\n", toString(msg.timestamp), msg.msg);
 }
 
 }  // namespace
@@ -37,12 +44,8 @@ logging::handlers::HandlerT logging::handlers::createCoutHandler() noexcept {
   return [out = std::ostream_iterator<char>(std::cout)](logging::LogMessage const& msg) { messagePrinter(out, msg); };
 }
 
-logging::handlers::HandlerT logging::handlers::createFileHandler(std::string const& filename) {
-  return {};
-  //   auto file = std::ofstream(filename, std::ios::binary);
-  //   auto out = std::ostreambuf_iterator<char>(file);
-  //   auto l = [](logging::LogMessage const& msg) { /*messagePrinter(out, msg);*/ };
-  //   return logging::handlers::HandlerT(std::move(l)); // need std::move_only_function
+logging::handlers::HandlerT logging::handlers::createFileHandler(std::ofstream& out) {
+  return [&out, it=std::ostreambuf_iterator<char>(out)](logging::LogMessage const& msg) { messagePrinter(it, msg); out.flush(); };
 }
 
 logging::Queue::Queue(size_t size) : mSize(next_pow2(size)), mMessages(mSize) {}
@@ -54,7 +57,7 @@ void logging::Queue::push(std::string msg) noexcept {
     done = false;
     // std::format("Buffer overflow! writeIdx: {}, mNextWrite: {}, mNextRead: {}, size: {}", writeIdx, mNextWrite.load(), mNextRead, mSize);
   }
-  slot.timestamp = 0;
+  slot.timestamp = std::chrono::system_clock::now();
   slot.msg = std::move(msg);
   done = true;
 }
@@ -64,7 +67,7 @@ std::optional<logging::LogMessage> logging::Queue::pop() noexcept {
   auto const numMissed = static_cast<int>(mNextWrite) - static_cast<int>(mNextRead) - static_cast<int>(mSize);
   if (numMissed > 0) {
     mNextRead += numMissed;
-    return logging::LogMessage{0, std::format("Missed {} message{}", numMissed, numMissed == 1 ? "" : "s"), false};
+    return LogMessage{std::chrono::system_clock::now(), std::format("Missed {} message{}", numMissed, numMissed == 1 ? "" : "s"), false};
   }
   auto readIdx = mask(mNextRead);
   auto& [done, msg] = mMessages[readIdx];

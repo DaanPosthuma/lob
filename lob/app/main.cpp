@@ -22,7 +22,11 @@ auto getTestFile() {
 }  // namespace
 
 int main() {
-  auto logger = logging::Logger{};
+
+  using namespace std::chrono_literals;
+
+  auto logFile = std::ofstream("logs/main.log");
+  auto logger = logging::Logger(1024, logging::handlers::createFileHandler(logFile), 1ms);
 
   auto loggerPtr = &logger;
   //loggerPtr = nullptr;

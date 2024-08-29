@@ -222,7 +222,7 @@ PYBIND11_MODULE(pymd, m) {
 
   py::class_<strategies::StrategyDiagnostics>(m, "StrategyDiagnostics")
       .def("__str__", [](strategies::StrategyDiagnostics const& sd) { return std::format("<StrategyDiagnostics at {}>", static_cast<void const*>(&sd)); })
-      .def("print", &strategies::StrategyDiagnostics::print);
+      .def("toString", &strategies::StrategyDiagnostics::toString);
 
   py::class_<strategies::TestStrategy>(m, "TestStrategy")
       .def(py::init<simulator::OMS&, int, int, logging::Logger*>())
@@ -231,7 +231,8 @@ PYBIND11_MODULE(pymd, m) {
 
   py::class_<logging::Logger>(m, "Logger")
       .def(py::init([](int queueSize, std::chrono::milliseconds sleepDuration) { return std::make_unique<logging::Logger>(queueSize, logging::handlers::createCoutHandler(), sleepDuration); }))
-      .def("__str__", [](logging::Logger const& l) { return std::format("<Logger at {}>", static_cast<void const*>(&l)); });
+      .def("__str__", [](logging::Logger const& l) { return std::format("<Logger at {}>", static_cast<void const*>(&l)); })
+      .def("log", [](logging::Logger& l, std::string const& m) { l.log("{}", m); });
 
   m.def("testStrategies", &testStrategies);
   m.def("getTopOfBookData", &getTopOfBookData);

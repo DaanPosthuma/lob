@@ -10,7 +10,7 @@ import pymd as p
 print(f'pid: {os.getpid()}')
 #time.sleep(10)
 
-logger = p.Logger(1024, datetime.timedelta(milliseconds=10))
+logger = None # p.Logger(1024, datetime.timedelta(milliseconds=1))
 
 file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
 reader = p.BinaryDataReader(file)
@@ -36,7 +36,7 @@ print(f'Took {te - ts}s' )
 for id, strategiesForSymbol in strategies.items():
     print(f'strategies for symbol {id} ({symbols.byId(id)})')
     for strategy in strategiesForSymbol:
-        strategy.diagnostics.print()
+        print(strategy.diagnostics.toString())
 
 timestamps, bids, asks = p.getTopOfBookData(reader, symbol_id, N)
 
