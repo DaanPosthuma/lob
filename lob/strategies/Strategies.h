@@ -1,5 +1,6 @@
 #pragma once
 
+#include <logger/Logger.h>
 #include <simulator/OMS.h>
 
 #include <algorithm>
@@ -9,7 +10,6 @@
 #include <limits>
 #include <numeric>
 #include <optional>
-#include <print>
 
 #include "StrategyDiagnostics.h"
 
@@ -95,7 +95,7 @@ inline auto microprice(auto const& top) {
 
 class TestStrategy : private StrategyBase {
  public:
-  TestStrategy(simulator::OMS& oms, int symbolId, size_t k = 100) : mAccumP(k), mAccumPSq(k), mSymbolId(symbolId), mOMS(oms) {}
+  TestStrategy(simulator::OMS& oms, int symbolId, size_t k = 100, logging::Logger* logger = nullptr) : mLogger(logger), mAccumP(k), mAccumPSq(k), mSymbolId(symbolId), mOMS(oms) {}
 
   using StrategyBase::diagnostics;
   using StrategyBase::loop;
@@ -117,19 +117,24 @@ class TestStrategy : private StrategyBase {
 
     if (!mPosition) {
       if (static_cast<double>(top.bid) > mean + 2 * stdev) {
-        //std::println("timestamp: {}, symbol id: {}", toString(timestamp), mSymbolId);
-        std::println("Bid/ask: {}/{}. micro: {}. Mean: {}, stdev: {}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
-        std::println("bid > mean + 2 * stdev. {} > {}", static_cast<double>(top.bid), mean + 2 * stdev);
-        std::println("selling for {}", mean);
-        mPosition = {mean, '-'};
+        
+        if (mLogger) {
+          mLogger->log("Bid/ask: {}/{}. micro: {}. Mean: {}, stdev: {}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
+          mLogger->log("bid > mean + 2 * stdev. {} > {}", static_cast<double>(top.bid), mean + 2 * stdev);
+          mLogger->log("selling for {}", static_cast<double>(top.bid));
+        }
+        mPosition = {static_cast<double>(top.bid), '-'};
         // mOMS.limitOrder(mSymbolId, md::itch::types::BUY_SELL::SELL, qty, mean);
       } else if (static_cast<double>(top.ask) < mean - 2 * stdev) {
-        //std::println("timestamp: {}, symbol id: {}", toString(timestamp), mSymbolId);
-        std::println("Bid/ask: {}/{}. micro: {}. Mean: {}, stdev: {}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
-        std::println("ask < mean - 2 * stdev. {} > {}", static_cast<double>(top.ask), mean - 2 * stdev);
-        std::println("buying for {}", mean);
+
+        if (mLogger) {
+          mLogger->log("Bid/ask: {}/{}. micro: {}. Mean: {}, stdev: {}", static_cast<double>(top.bid), static_cast<double>(top.ask), price, mean, stdev);
+          mLogger->log("ask < mean - 2 * stdev. {} > {}", static_cast<double>(top.ask), mean - 2 * stdev);
+          mLogger->log("buying for {}", static_cast<double>(top.ask));
+        }
+        
+        mPosition = {static_cast<double>(top.ask), '+'};
         // mOMS.limitOrder(mSymbolId, md::itch::types::BUY_SELL::SELL, qty, mean);
-        mPosition = {mean, '+'};
       }
     } else {
       // try to close out position
@@ -141,6 +146,7 @@ class TestStrategy : private StrategyBase {
   int mSymbolId;
   simulator::OMS& mOMS;
   std::optional<std::tuple<double, char>> mPosition;
+  logging::Logger* mLogger;
 };
 
 }  // namespace strategies

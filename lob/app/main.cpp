@@ -1,11 +1,10 @@
-﻿#include <md/BinaryDataReader.h>
+﻿#include <logger/Logger.h>
+#include <md/BinaryDataReader.h>
 #include <md/MappedFile.h>
 #include <md/Symbols.h>
 #include <simulator/functions.h>
 
-
 #include <chrono>
-#include <print>
 
 namespace {
 
@@ -23,33 +22,36 @@ auto getTestFile() {
 }  // namespace
 
 int main() {
-  
+  auto logger = logging::Logger{};
+
+  auto loggerPtr = &logger;
+  //loggerPtr = nullptr;
+
   auto const file = getTestFile();
   auto const maxNumIters = 10000000;
 
   auto reader = md::BinaryDataReader(file.data(), file.size());
   auto const symbols = md::utils::Symbols(reader);
-  std::println("Loaded {} symbols", symbols.count());
+  if (loggerPtr) loggerPtr->log("Loaded {} symbols", symbols.count());
 
   auto marketStart = reader.curr();
 
   {
     reader.reset(marketStart);
-    std::println("Single thread:");
+    if (loggerPtr) loggerPtr->log("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::runTest(reader, symbols, maxNumIters, true);
+    simulator::runTest(reader, symbols, maxNumIters, true, loggerPtr);
     auto const end = std::chrono::high_resolution_clock::now();
-    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+    if (loggerPtr) loggerPtr->log("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
-  { 
+  {
     reader.reset(marketStart);
     auto reader = md::BinaryDataReader(file.data(), file.size());
-    std::println("Multi threaded:");
+    if (loggerPtr) loggerPtr->log("Multi threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
-    simulator::runTest(reader, symbols, maxNumIters, false);
+    simulator::runTest(reader, symbols, maxNumIters, false, loggerPtr);
     auto const end = std::chrono::high_resolution_clock::now();
-    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+    if (loggerPtr) loggerPtr->log("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
-
 }

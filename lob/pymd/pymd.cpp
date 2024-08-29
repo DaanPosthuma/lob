@@ -105,10 +105,11 @@ auto getTopOfBookData(
   return std::tuple{timestamps, bids, asks};
 }
 
+#define LOG(...) logger.log(__VA_ARGS__);
+
 void loggerTest() {
   
-  auto lm = logging::Manager(16, logging::printLogMessage, 1ms);
-  auto loggerPtr = &lm.logger();
+  auto logger = logging::Logger(16, logging::handlers::print, 1ms);
 
   std::this_thread::sleep_for(1s);
 
@@ -224,9 +225,13 @@ PYBIND11_MODULE(pymd, m) {
       .def("print", &strategies::StrategyDiagnostics::print);
 
   py::class_<strategies::TestStrategy>(m, "TestStrategy")
-      .def(py::init<simulator::OMS&, int, int>())
+      .def(py::init<simulator::OMS&, int, int, logging::Logger*>())
       .def("__str__", [](strategies::TestStrategy const& s) { return std::format("<TestStrategy at {}>", static_cast<void const*>(&s)); })
       .def_property_readonly("diagnostics", [](strategies::TestStrategy const& s) { return s.diagnostics(); });
+
+  py::class_<logging::Logger>(m, "Logger")
+      .def(py::init([](int queueSize, std::chrono::milliseconds sleepDuration) { return std::make_unique<logging::Logger>(queueSize, logging::handlers::print, sleepDuration); }))
+      .def("__str__", [](logging::Logger const& l) { return std::format("<Logger at {}>", static_cast<void const*>(&l)); });
 
   m.def("testStrategies", &testStrategies);
   m.def("getTopOfBookData", &getTopOfBookData);

@@ -1,2 +1,2 @@
-add_library(logger INTERFACE)
-target_include_directories(logger INTERFACE .)
+add_library(logger Logger.cpp)
+target_include_directories(logger PUBLIC .)

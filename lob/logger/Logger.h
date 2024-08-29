@@ -4,7 +4,6 @@
 #include <functional>
 #include <optional>
 #include <print>
-#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -13,42 +12,23 @@ namespace logging {
 struct LogMessage {
   int timestamp = 0;
   std::string msg = {};
+  bool overflow = false;
 };
+
+namespace handlers {
+  void print(logging::LogMessage const& msg);
+}
+
 
 class Queue {
  public:
-  explicit Queue(size_t size) : mSize(size), mMessages(mSize) {}
+  explicit Queue(size_t size);
 
-  void push(int timestamp, std::string msg) noexcept {
-    auto const writeIdx = mask(mNextWrite++);
-    auto& [done, slot] = mMessages[writeIdx];
-    if (done) {
-      done = false;
-      //if (recurse) push(timestamp, std::format("Logger::push - Buffer overflow! writeIdx: {}, mNextWrite: {}, mNextRead: {}, size: {}", writeIdx, mNextWrite.load(), mNextRead, mSize), false);
-    }
-    slot.timestamp = timestamp;
-    slot.msg = std::move(msg);
-    done = true;
-  }
-
-  [[nodiscard]] std::optional<LogMessage> pop() noexcept {
-    if (mNextRead == mNextWrite) return {};
-    if (mNextWrite - mNextRead > mSize) {
-      //if (recurse) push({}, std::format("Logger::pop - Missed {} message(s)", mNextWrite - mNextRead - mSize), false);
-      mNextRead = mNextWrite - mSize;
-    }
-    auto readIdx = mask(mNextRead);
-    auto& [done, msg] = mMessages[readIdx];
-    if (!done) return {};
-    done = false;
-    ++mNextRead;
-    return msg;
-  }
+  void push(std::string msg) noexcept;
+  [[nodiscard]] std::optional<LogMessage> pop() noexcept;
 
  private:
-  auto constexpr mask(size_t idx) const noexcept {
-    return idx & (mSize - 1);
-  }
+  [[nodiscard]] size_t constexpr mask(size_t idx) const noexcept;
 
   size_t mSize;
   std::vector<std::pair<std::atomic<bool>, LogMessage>> mMessages;
@@ -56,45 +36,26 @@ class Queue {
   std::atomic<size_t> mNextWrite = 0;  // multiple producers
 };
 
+using namespace std::chrono_literals;
+
 class Logger {
  public:
-  Logger(Queue& queue) : mQueue(queue) {}
+  Logger();
+  Logger(size_t queueSize, std::function<void(LogMessage const&)> messageHandler, std::chrono::milliseconds sleepDuration);
+
+  Logger(Logger&) = delete;
+  Logger(Logger&&) = delete;
+  Logger& operator=(Logger&) = delete;
+  Logger& operator=(Logger&&) = delete;
 
   template <class... Args>
   void log(std::format_string<Args...> fmt, Args&&... args) {
-    mQueue.push(0, std::format(fmt, std::forward<Args>(args)...));
+    mQueue.push(std::format(fmt, std::forward<Args>(args)...));
   }
 
  private:
-  Queue& mQueue;
-};
-
-class Manager {
- public:
-  Manager(size_t queueSize, std::function<void(LogMessage const&)> const& messageHandler, auto sleepDuration)
-      : mQueue(queueSize), mLogger(mQueue), mHandler([this, &messageHandler, sleepDuration](std::stop_token stopToken) { loop(stopToken, messageHandler, sleepDuration); }) {}
-  [[nodiscard]] Logger& logger() noexcept { return mLogger; }
-
- private:
-  void loop(std::stop_token stopToken, std::function<void(LogMessage const&)> const& logMessageHandler, auto sleepDuration) {
-    while (!stopToken.stop_requested()) {
-      if (auto msg = mQueue.pop()) {
-        logMessageHandler(*msg);
-      } else {
-        std::this_thread::sleep_for(sleepDuration);
-      }
-    }
-  }
-
   Queue mQueue;
-  Logger mLogger;
   std::jthread mHandler;
 };
-
-void printLogMessage(logging::LogMessage const& msg) {
-  std::println("{}", msg.msg);
-};
-
-#define LOG(...) if (loggerPtr != nullptr) { loggerPtr->log(__VA_ARGS__); }
 
 }  // namespace logging

@@ -1,5 +1,6 @@
 ﻿#include "functions.h"
 
+#include <logger/Logger.h>
 #include <md/BinaryDataReader.h>
 #include <md/Symbols.h>
 #include <md/itch/MessageReaders.h>
@@ -73,8 +74,7 @@ simulator::Simulator::EventT simulator::getNextMarketDataEvent(md::BinaryDataRea
   throw std::runtime_error("end of messages");
 }
 
-void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& symbols, int numIters, bool singleThreaded) try {
-
+void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& symbols, int numIters, bool singleThreaded, logging::Logger* logger) try {
   ItchBooksManager bmgr;
 
   auto simulator = simulator::Simulator{[&] { return getNextMarketDataEvent(reader, bmgr); }};
@@ -84,7 +84,7 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
 
   if (singleThreaded) {
     auto const symbolId = symbols.byName("QQQ");
-    auto strategy = strategies::TestStrategy(oms, symbolId);
+    auto strategy = strategies::TestStrategy(oms, symbolId, 100, logger);
     auto const& book = bmgr.bookById(symbolId);
     auto prevTop = book.top();
     size_t bufferReadIdx = 0;
@@ -96,7 +96,7 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
         prevTop = top;
       }
     }
-    std::println("Strategy and simulation done:");
+    if (logger) logger->log("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();
     diagnostics.print();
     diagnostics.save("diagnostics/ST_QQQ.json");
@@ -110,7 +110,7 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
       for (int i : std::views::iota(0, numIters)) {
         simulator.step();
       }
-      std::println("Simulation done.");
+      if (logger) logger->log("Simulation done.");
       running = false;
     };
 
@@ -136,19 +136,19 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
 
     auto diagnostics = ex::sync_wait(std::move(work)).value();
 
-    std::println("Done!");
+    if (logger) logger->log("Done!");
 
-    auto f = [](auto const& diagnostics, size_t i) {
-      std::println("Diagnostics {}:", i);
+    auto f = [logger](auto const& diagnostics, size_t i) {
+      if (logger) logger->log("Diagnostics {}:", i);
       diagnostics.print();
-      std::println("");
+      if (logger) logger->log("");
     };
 
     tuple_map(diagnostics, f);
   }
 
 } catch (std::exception const& ex) {
-  std::println("Exception: {}", ex.what());
+  if (logger) logger->log("Exception: {}", ex.what());
 } catch (...) {
-  std::println("Unknown exception");
+  if (logger) logger->log("Unknown exception");
 }
