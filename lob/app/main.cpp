@@ -5,6 +5,7 @@
 #include <simulator/functions.h>
 
 #include <chrono>
+#include <print>
 
 namespace {
 
@@ -36,26 +37,30 @@ int main() {
 
   auto reader = md::BinaryDataReader(file.data(), file.size());
   auto const symbols = md::utils::Symbols(reader);
-  if (loggerPtr) loggerPtr->log("Loaded {} symbols", symbols.count());
+  std::println("Loaded {} symbols", symbols.count());
 
   auto marketStart = reader.curr();
 
   {
     reader.reset(marketStart);
-    if (loggerPtr) loggerPtr->log("Single thread:");
+    if (loggerPtr) loggerPtr->log("Start single thread");
+    std::println("Single thread:");
     auto const start = std::chrono::high_resolution_clock::now();
     simulator::runTest(reader, symbols, maxNumIters, true, loggerPtr);
     auto const end = std::chrono::high_resolution_clock::now();
-    if (loggerPtr) loggerPtr->log("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
 
   {
     reader.reset(marketStart);
     auto reader = md::BinaryDataReader(file.data(), file.size());
-    if (loggerPtr) loggerPtr->log("Multi threaded:");
+    if (loggerPtr) loggerPtr->log("Start multi threaded");
+    std::println("Multi threaded:");
     auto const start = std::chrono::high_resolution_clock::now();
     simulator::runTest(reader, symbols, maxNumIters, false, loggerPtr);
     auto const end = std::chrono::high_resolution_clock::now();
-    if (loggerPtr) loggerPtr->log("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+    std::println("Time: {}.\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
   }
+
+  if (loggerPtr) loggerPtr->log("Done");
 }

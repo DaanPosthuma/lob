@@ -6,6 +6,7 @@
 #include <iterator>
 #include <print>
 #include <stop_token>
+#include <iostream>
 
 namespace {
 
@@ -33,19 +34,18 @@ auto toString(std::chrono::system_clock::time_point tp) {
     return s;
 }
 
-template <class OutputIt>
-void messagePrinter(OutputIt out, logging::LogMessage const& msg) {
-  std::format_to(out, "{}: {}\n", toString(msg.timestamp), msg.msg);
+auto messageToString(logging::LogMessage const& msg) {
+  return std::format("{}: {}", toString(msg.timestamp), msg.msg);
 }
 
 }  // namespace
 
 logging::handlers::HandlerT logging::handlers::createCoutHandler() noexcept {
-  return [out = std::ostream_iterator<char>(std::cout)](logging::LogMessage const& msg) { messagePrinter(out, msg); };
+  return [](logging::LogMessage const& msg) { std::cout << messageToString(msg) << std::endl; };
 }
 
 logging::handlers::HandlerT logging::handlers::createFileHandler(std::ofstream& out) {
-  return [&out, it=std::ostreambuf_iterator<char>(out)](logging::LogMessage const& msg) { messagePrinter(it, msg); out.flush(); };
+  return [&out](logging::LogMessage const& msg) { out << messageToString(msg) << std::endl; };
 }
 
 logging::Queue::Queue(size_t size) : mSize(next_pow2(size)), mMessages(mSize) {}
@@ -81,7 +81,7 @@ size_t constexpr logging::Queue::mask(size_t idx) const noexcept {
   return idx & (mSize - 1);
 }
 
-logging::Logger::Logger() : Logger(1024, handlers::createCoutHandler(), 10ms) {}
+logging::Logger::Logger() : Logger(1024, handlers::createCoutHandler(), 1ms) {}
 
 logging::Logger::Logger(size_t queueSize, std::function<void(LogMessage const&)> messageHandler, std::chrono::milliseconds sleepDuration)
     : mQueue(queueSize),

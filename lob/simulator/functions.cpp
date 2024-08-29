@@ -96,9 +96,9 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
         prevTop = top;
       }
     }
-    if (logger) logger->log("Strategy and simulation done:");
+    std::println("Strategy and simulation done:");
     auto const& diagnostics = strategy.diagnostics();
-    if (logger) logger->log("{}", diagnostics.toString());
+    std::println("{}", diagnostics.toString());
     diagnostics.save("diagnostics/ST_QQQ.json");
 
   } else {
@@ -110,13 +110,13 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
       for (int i : std::views::iota(0, numIters)) {
         simulator.step();
       }
-      if (logger) logger->log("Simulation done.");
+      std::println("Simulation done.");
       running = false;
     };
 
-    auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &bmgr, &oms](std::string const& symbolName) {
+    auto const strategyLoop = [&running, &symbols = std::as_const(symbols), &bmgr, &oms, &logger](std::string const& symbolName) {
       auto const symbolId = symbols.byName(symbolName);
-      auto strategy = strategies::TestStrategy(oms, symbolId);
+      auto strategy = strategies::TestStrategy(oms, symbolId, 100, logger);
       auto const& topOfBookBuffer = bmgr.bufferById(symbolId);
       size_t bufferReadIdx = 0;
       return strategy.loop(running, topOfBookBuffer, bufferReadIdx);
@@ -136,18 +136,18 @@ void simulator::runTest(md::BinaryDataReader& reader, md::utils::Symbols const& 
 
     auto diagnostics = ex::sync_wait(std::move(work)).value();
 
-    if (logger) logger->log("Done!");
+    std::println("Done!");
 
-    auto f = [logger](auto const& diagnostics, size_t i) {
-      if (logger) logger->log("Diagnostics {}:", i);
-      if (logger) logger->log("{}", diagnostics.toString());
+    auto f = [](auto const& diagnostics, size_t i) {
+      std::println("Diagnostics {}:", i);
+      std::println("{}", diagnostics.toString());
     };
 
     tuple_map(diagnostics, f);
   }
 
 } catch (std::exception const& ex) {
-  if (logger) logger->log("Exception: {}", ex.what());
+  std::println("Exception: {}", ex.what());
 } catch (...) {
-  if (logger) logger->log("Unknown exception");
+  std::println("Unknown exception");
 }
