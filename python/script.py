@@ -1,20 +1,24 @@
 import sys
+import os
 import time
 import matplotlib.pyplot as plt
+import datetime
+import time
 
 import pymd as p
 
-p.loggerTest()
-print("logger test done\n")
+print(f'pid: {os.getpid()}')
+#time.sleep(10)
+
+logger = p.Logger(1024, datetime.timedelta(milliseconds=10))
 
 file = p.MappedFile("../data/01302019.NASDAQ_ITCH50")
 reader = p.BinaryDataReader(file)
 symbols = p.Symbols(reader)
 oms = p.OMS()
 symbol_id = symbols.byName('QQQ')
-#ks = [10, 50, 100, 200, 500]
-ks = [100]
-strategies = {symbol_id: [p.TestStrategy(oms, k, symbol_id) for k in ks]}
+ks = [10, 50, 100, 200, 500]
+strategies = {symbol_id: [p.TestStrategy(oms, k, symbol_id, logger) for k in ks]}
 
 print(f'file: {file}')
 print(f'reader: {reader}')
